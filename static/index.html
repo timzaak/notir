@@ -1,45 +1,151 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>notir|Notification via Websocket</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notir | Notification via WebSocket</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 90%;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            color: #333;
+        }
+
+        #status p,
+        #devtools-shortcut p {
+            font-size: 1em;
+            color: #555;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            #status p,
+            #devtools-shortcut p {
+                font-size: 0.95em;
+            }
+        }
+    </style>
 </head>
 <body>
-<h1>NOTIR</h1>
-<div id="chat">
-    <p><em>Connecting...</em></p>
+<div class="container">
+    <h1>NOTIR</h1>
+    <div id="status">
+        <p><em>Checking for ID in URL...</em></p>
+    </div>
+    <div id="devtools-shortcut">
+        <p>Press Ctrl+Shift+J (Windows/Linux) or Cmd+Option+J (Mac) to open the Developer Console to see messages.</p>
+    </div>
 </div>
-<input type="text" id="text" />
-<button type="button" id="submit">Submit</button>
 <script>
-    const chat = document.getElementById('chat');
-    const msg = document.getElementById('msg');
-    const submit = document.getElementById('submit');
-    const ws_protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${ws_protocol}//${location.host}/ws`);
+    const statusDiv = document.getElementById('status');
+    let ws;
+    let heartbeatIntervalId;
 
-    ws.onopen = function() {
-        chat.innerHTML = '<p><em>Connected!</em></p>';
-    };
-
-    ws.onmessage = function(msg) {
-        showMessage(msg.data);
-    };
-
-    ws.onclose = function() {
-        chat.getElementsByTagName('em')[0].innerText = 'Disconnected!';
-    };
-
-    submit.onclick = function() {
-        const msg = text.value;
-        ws.send(msg);
-        text.value = '';
-
-        showMessage('<You>: ' + msg);
-    };
-    function showMessage(data) {
-        const line = document.createElement('p');
-        line.innerText = data;
-        chat.appendChild(line);
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+
+        if (!id) {
+            statusDiv.innerHTML = '<p><em>Error: No ID found in URL query string. Please append ?id=your_id to the URL.</em></p>';
+            console.error('Error: No ID found in URL query string.');
+            return;
+        }
+
+        statusDiv.innerHTML = `<p><em>Attempting to connect WebSocket with ID: ${id}</em></p>`;
+        console.log(`Attempting to connect WebSocket with ID: ${id}`);
+
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${wsProtocol}//${window.location.host}/sub?id=${id}`;
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = function() {
+            statusDiv.innerHTML = `<p><em>Connected with ID: ${id}!</em></p>`;
+            console.log(`WebSocket connected with ID: ${id}`);
+
+            // Send heartbeat every 30 seconds
+            heartbeatIntervalId = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    const heartbeatMsg = JSON.stringify({ type: "heartbeat", timestamp: new Date().toISOString() });
+                    ws.send(heartbeatMsg);
+                    // console.debug('Sent heartbeat:', heartbeatMsg);
+                }
+            }, 30000);
+        };
+
+        ws.onmessage = function(event) {
+            if (typeof event.data === 'string') {
+                console.log(event.data);
+                // Optionally display text messages on the page if desired in future
+                // const line = document.createElement('p');
+                // line.textContent = event.data;
+                // statusDiv.appendChild(line); // Example: append to status or a dedicated message area
+            } else if (event.data instanceof ArrayBuffer) {
+                const base64String = arrayBufferToBase64(event.data);
+                console.log(base64String);
+            } else if (event.data instanceof Blob) {
+                // console.log("Received binary message (Blob)");
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const base64String = arrayBufferToBase64(reader.result);
+                    console.log(base64String);
+                };
+                reader.readAsArrayBuffer(event.data);
+            } else {
+                console.warn("Received unknown message type:", event.data);
+            }
+        };
+
+        ws.onclose = function(event) {
+            statusDiv.innerHTML = `<p><em>Disconnected. ID: ${id}. Code: ${event.code}, Reason: ${event.reason || 'N/A'}</em></p>`;
+            console.warn(`WebSocket disconnected. ID: ${id}. Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
+            if (heartbeatIntervalId) {
+                clearInterval(heartbeatIntervalId);
+                // console.debug('Cleared heartbeat interval.');
+            }
+        };
+
+        ws.onerror = function(error) {
+            statusDiv.innerHTML = `<p><em>WebSocket Error with ID: ${id}. See console for details.</em></p>`;
+            console.error(`WebSocket Error with ID: ${id}:`, error);
+            if (heartbeatIntervalId) {
+                clearInterval(heartbeatIntervalId); // Also clear on error as connection might be closing
+            }
+        };
+    });
 </script>
 </body>
 </html>
