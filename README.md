@@ -1,1 +1,42 @@
-# NOTIR
+# Notir
+
+`Notir` is a lightweight WebSocket server built with Rust using the Salvo web framework and Tokio. It allows users to connect via WebSockets, subscribe to a real-time message feed, and publish messages to other connected clients.
+
+## Features
+
+- WebSocket communication for real-time messaging.
+- Simple publish/subscribe model.
+- Containerized with Docker for easy deployment.
+
+## Getting Started
+
+### Using Docker
+
+The easiest way to run `Notir` is by using the pre-built Docker image available on GitHub Container Registry.
+
+```bash
+docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
+# open browser: http://127.0.0.1:5800
+```
+
+This will start the `notir` server and map port `5800` on your host to port `5800` in the container. 
+
+
+## API Endpoints
+
+*   `GET /sub?id=<user_id>`:
+    *   Establishes a WebSocket connection for a user to subscribe to messages.
+    *   Query Parameters:
+        *   `id` (required): A unique string identifier for the client. Cannot be empty.
+    *   Upgrades the connection to WebSocket. Messages from other users will be pushed to this WebSocket connection.
+*   `POST /pub?id=<user_id>`:
+    *   Publishes a message from a client to all *other* connected clients.
+    *   Query Parameters:
+        *   `id` (required): The unique string identifier of the sending client. Cannot be empty.
+    *   Request Body: The message content.
+        *   If the `Content-Type` header is `application/json` or starts with `text/` (e.g., `text/plain`), the message is treated as a UTF-8 text message.
+        *   Otherwise, the message is treated as binary.
+    *   Responses:
+        *   `200 OK`: If the message was successfully sent to the target user's channel.
+        *   `400 Bad Request`: If the `id` query parameter is missing or empty, or if a `text/*` body contains invalid UTF-8.
+        *   `404 Not Found`: If the specified `user_id` is not currently connected.
