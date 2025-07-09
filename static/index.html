@@ -1,0 +1,45 @@
+<html>
+<head>
+    <title>notir|Notification via Websocket</title>
+</head>
+<body>
+<h1>NOTIR</h1>
+<div id="chat">
+    <p><em>Connecting...</em></p>
+</div>
+<input type="text" id="text" />
+<button type="button" id="submit">Submit</button>
+<script>
+    const chat = document.getElementById('chat');
+    const msg = document.getElementById('msg');
+    const submit = document.getElementById('submit');
+    const ws_protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${ws_protocol}//${location.host}/ws`);
+
+    ws.onopen = function() {
+        chat.innerHTML = '<p><em>Connected!</em></p>';
+    };
+
+    ws.onmessage = function(msg) {
+        showMessage(msg.data);
+    };
+
+    ws.onclose = function() {
+        chat.getElementsByTagName('em')[0].innerText = 'Disconnected!';
+    };
+
+    submit.onclick = function() {
+        const msg = text.value;
+        ws.send(msg);
+        text.value = '';
+
+        showMessage('<You>: ' + msg);
+    };
+    function showMessage(data) {
+        const line = document.createElement('p');
+        line.innerText = data;
+        chat.appendChild(line);
+    }
+</script>
+</body>
+</html>

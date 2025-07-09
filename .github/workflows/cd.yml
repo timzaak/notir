@@ -1,0 +1,37 @@
+name: cd
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Trigger on version tags like v1.0.0
+env:
+  CARGO_TERM_COLOR: always
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  release_image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Log in to the GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get the version from the tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: Dockerfile
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ steps.get_version.outputs.VERSION }}
+    
