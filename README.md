@@ -11,18 +11,26 @@
 ## Getting Started
 
 ### Quick Try
-It has been deployed on http://notir.fornecode.com:5800, you can try it out right away.
+It has been deployed on the public server, you can try it out right away: http://notir.fornecode.com:5800?id=${uuid} .
 
-### Using Docker
+Please change `uuid` to whatever you want, and now you can publish messages to the server like this:
+```bash
+curl -X POST http://notir.fornecode.com:5800/pub?id=${uuid} -H 'Content-Type: application/json' -d '{"msg": "hello world"}'
+```
+
+<img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
+
+### Self Hosted
 
 The easiest way to run `Notir` is by using the pre-built Docker image available on GitHub Container Registry.
 
 ```bash
 docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
-# open browser: http://127.0.0.1:5800
-```
+# open browser: http://127.0.0.1:5800?id=test
 
-<img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
+# Publish the message via:
+curl -X POST http://127.0.0.1:5800/pub?id=test -H 'Content-Type: application/json' -d '{"msg": "hello world"}'
+```
 
 ## API Endpoints
 
