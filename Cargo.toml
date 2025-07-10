@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 futures-util = "0.3"
 rust-embed = ">= 6, <= 9"
-salvo = { version = "0.79", features = ["websocket", "serve-static", "compression"] }
+salvo = { version = "0.80", features = ["websocket", "serve-static", "compression"] }
 tokio = { version = "1", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
