@@ -10,6 +10,9 @@
 
 ## Getting Started
 
+### Quick Try
+It has been deployed on http://notir.fornecode.com:5800, you can try it out right away.
+
 ### Using Docker
 
 The easiest way to run `Notir` is by using the pre-built Docker image available on GitHub Container Registry.
@@ -20,9 +23,6 @@ docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
 ```
 
 <img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
-
-This will start the `notir` server and map port `5800` on your host to port `5800` in the container. 
-
 
 ## API Endpoints
 

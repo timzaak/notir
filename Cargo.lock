@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "notir"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "futures-util",
  "rust-embed",

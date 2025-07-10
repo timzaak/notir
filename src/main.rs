@@ -152,6 +152,11 @@ struct Assets;
 async fn health(res: &mut Response) {
     res.status_code(StatusCode::OK);
 }
+
+#[handler]
+async fn version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
 #[tokio::main]
 async fn main() {
     // Initialize logging subsystem
@@ -167,6 +172,7 @@ async fn main() {
 
     let router = Router::new()
         .push(Router::with_path("health").goal(health))
+        .push(Router::with_path("version").goal(version))
         .push(Router::with_path("sub").goal(user_connected))
         .push(Router::with_path("pub").post(publish_message))
         .push(static_files);
