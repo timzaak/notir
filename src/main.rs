@@ -149,8 +149,8 @@ async fn publish_message(req: &mut Request, res: &mut Response, ctrl: &mut FlowC
 struct Assets;
 
 #[handler]
-async fn hello() -> &'static str {
-    "Hello World"
+async fn health(res: &mut Response) {
+    res.status_code(StatusCode::OK);
 }
 #[tokio::main]
 async fn main() {
@@ -166,7 +166,7 @@ async fn main() {
         Router::with_path("{*path}").get(static_embed::<Assets>().fallback("index.html"));
 
     let router = Router::new()
-        .push(Router::with_path("hello").goal(hello))
+        .push(Router::with_path("health").goal(health))
         .push(Router::with_path("sub").goal(user_connected))
         .push(Router::with_path("pub").post(publish_message))
         .push(static_files);
