@@ -54,7 +54,7 @@ const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer:
 `;
 
 function App() {
-  const [statusMessage, setStatusMessage] = useState('<em>Checking for ID in URL...</em>');
+  const [statusMessage, setStatusMessage] = useState('Checking for ID in URL...');
   const ws = useRef<WebSocket | null>(null);
   const heartbeatIntervalId = useRef<number | null>(null);
   const [editorCode, setEditorCode] = useState(() => {
@@ -68,11 +68,11 @@ function App() {
   const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad: boolean = false) => {
     if (!isInitialLoad) {
       setIsApplyingCode(true);
-      setStatusMessage("<em>Applying new code...</em>");
+      setStatusMessage("Applying new code...");
       // Short delay to allow UI to update before potentially blocking compilation
       await new Promise(resolve => setTimeout(resolve, 50));
     } else {
-      setStatusMessage("<em>Initializing WebSocket handler...</em>");
+      setStatusMessage("Initializing WebSocket handler...");
     }
 
     try {
@@ -80,22 +80,22 @@ function App() {
 
       setWsMessageHandler(() => (event: MessageEvent) => {
         try {
-          dynamicHandler(event, arrayBufferToBase64, (msg: string) => setStatusMessage(`<em>${msg}</em>`));
+          dynamicHandler(event, arrayBufferToBase64, (msg: string) => setStatusMessage(msg));
         } catch (e) {
           console.error(`Error executing dynamic WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, e);
-          setStatusMessage(`<em>Error in custom message handler. Check console. Using default handler.</em>`);
+          setStatusMessage(`Error in custom message handler. Check console. Using default handler.`);
           defaultWsMessageHandler(event);
         }
       });
 
       if (!isInitialLoad) {
         localStorage.setItem('wsMessageHandlerCode', codeToApply);
-        setStatusMessage("<em>WebSocket message handler updated successfully!</em>");
+        setStatusMessage("WebSocket message handler updated successfully!");
       }
     } catch (error) {
       console.error(`Error compiling WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      setStatusMessage(`<em>Error compiling code: ${errorMessage}. ${isInitialLoad ? 'Using default handler.' : 'Previous handler remains active.'}</em>`);
+      setStatusMessage(`Error compiling code: ${errorMessage}. ${isInitialLoad ? 'Using default handler.' : 'Previous handler remains active.'}`);
       if (isInitialLoad) {
         // Fallback to default handler if initial code from storage is bad
         setWsMessageHandler(() => defaultWsMessageHandler);
@@ -126,11 +126,11 @@ function App() {
     }
 
     if (!id) {
-      setStatusMessage('<em>Error: No ID found in URL query string. Please append ?id=your_id to the URL.</em>');
+      setStatusMessage('Error: No ID found in URL query string. Please append ?id=your_id to the URL.');
       return;
     }
 
-    setStatusMessage(`<em>Attempting to connect WebSocket with ID: ${id}</em>`);
+    setStatusMessage(`Attempting to connect WebSocket with ID: ${id}`);
 
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = import.meta.env.DEV ? `ws://127.0.0.1:5800/sub?id=${id}`: `${wsProtocol}//${window.location.host}/sub?id=${id}`;
@@ -138,7 +138,7 @@ function App() {
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
-      setStatusMessage(`<em>Connected with ID: ${id}!</em>`);
+      setStatusMessage(`Connected with ID: ${id}`);
       console.log(`WebSocket connected with ID: ${id}`);
 
       heartbeatIntervalId.current = window.setInterval(() => {
@@ -154,7 +154,7 @@ function App() {
     };
 
     ws.current.onclose = (event) => {
-      setStatusMessage(`<em>Disconnected. ID: ${id}. Code: ${event.code}, Reason: ${event.reason || 'N/A'}</em>`);
+      setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
       if (heartbeatIntervalId.current) {
         clearInterval(heartbeatIntervalId.current);
         heartbeatIntervalId.current = null;
@@ -162,7 +162,7 @@ function App() {
     };
 
     ws.current.onerror = (error) => {
-      setStatusMessage(`<em>WebSocket Error with ID: ${id}. See console for details.</em>`);
+      setStatusMessage(`WebSocket Error with ID: ${id}. See console for details.`);
       console.error(`WebSocket Error with ID: ${id}:`, error);
       if (heartbeatIntervalId.current) {
         clearInterval(heartbeatIntervalId.current);
@@ -181,10 +181,19 @@ function App() {
     };
   }, []);
 
+  const statusIsError = statusMessage.toLowerCase().includes('error');
+  const statusMessageClasses = `
+    p-3 mb-5 rounded-md shadow-md text-left
+    ${statusIsError
+      ? 'bg-red-100 text-red-700 border border-red-300'
+      : 'bg-blue-100 text-blue-800 border border-blue-300'
+    }
+  `;
+
   return (
     <div className="container mx-auto px-4 py-8 text-center">
       <h1 className="text-5xl font-bold mb-5">NOTIR</h1>
-      <div id="status" dangerouslySetInnerHTML={{ __html: statusMessage }} />
+      <div id="status" className={statusMessageClasses.trim()}>{statusMessage}</div>
       <CodeEditor
         code={editorCode}
         setCode={setEditorCode}
