@@ -19,6 +19,8 @@ docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
 # open browser: http://127.0.0.1:5800
 ```
 
+<img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
+
 This will start the `notir` server and map port `5800` on your host to port `5800` in the container. 
 
 
