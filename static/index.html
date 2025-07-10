@@ -109,10 +109,6 @@
         ws.onmessage = function(event) {
             if (typeof event.data === 'string') {
                 console.log(event.data);
-                // Optionally display text messages on the page if desired in future
-                // const line = document.createElement('p');
-                // line.textContent = event.data;
-                // statusDiv.appendChild(line); // Example: append to status or a dedicated message area
             } else if (event.data instanceof ArrayBuffer) {
                 const base64String = arrayBufferToBase64(event.data);
                 console.log(base64String);

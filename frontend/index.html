@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notir | Notification via WebSocket</title>
+    <script type="module" src="/src/main.tsx"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 90%;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            color: #333;
+        }
+
+        #status p,
+        #devtools-shortcut p {
+            font-size: 1em;
+            color: #555;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            #status p,
+            #devtools-shortcut p {
+                font-size: 0.95em;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+    // The main JavaScript logic will be moved to App.tsx
+    // However, we need to retain the logic for extracting 'id' from URL
+    // and making it available to the React component.
+    // We can store it in a global variable or pass it via props if App.tsx can access it directly.
+    // For now, let's assume App.tsx will handle this.
+</script>
+</body>
+</html>

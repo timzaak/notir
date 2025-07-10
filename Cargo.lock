@@ -954,13 +954,11 @@ dependencies = [
 
 [[package]]
 name = "notir"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "futures-util",
  "rust-embed",
  "salvo",
- "serde",
- "serde_json",
  "tokio",
  "tokio-stream",
  "tracing",
