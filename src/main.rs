@@ -76,7 +76,7 @@ async fn user_disconnected(my_id: String) {
 }
 
 #[handler]
-async fn publish_message(req: &mut Request, res: &mut Response, ctrl: &mut FlowCtrl) {
+async fn publish_message(req: &mut Request, res: &mut Response) {
     let string_uid = req
         .query::<String>("id")
         .ok_or_else(|| StatusError::bad_request().detail("Missing 'id' query parameter for /pub"));
@@ -161,9 +161,9 @@ async fn main() {
 
     // Bind server to port 5800
     let acceptor = TcpListener::new("0.0.0.0:5800").bind().await;
-
     let static_files =
-        Router::with_path("{*path}").get(static_embed::<Assets>().fallback("index.html"));
+        Router::with_hoop(Compression::new().enable_gzip(CompressionLevel::Fastest))
+            .path("{*path}").get(static_embed::<Assets>().fallback("index.html"));
 
     let router = Router::new()
         .push(Router::with_path("health").goal(health))
@@ -172,6 +172,7 @@ async fn main() {
         .push(static_files);
 
     tracing::debug!("{:?}", router);
+    println!("Notir server start, binding: {:?}", acceptor.local_addr().unwrap());
 
     // Start serving requests
     Server::new(acceptor).serve(router).await;
