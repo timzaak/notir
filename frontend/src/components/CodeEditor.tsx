@@ -38,8 +38,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ code, setCode, submitCode, isLo
         {isLoading ? 'Applying...' : 'Apply and Save Code'}
       </button>
       <p className="mt-2 text-xs text-gray-500 text-left">
-        Edit the JavaScript function body above to customize how WebSocket messages are handled.
-        The function will receive: <code>event</code> (MessageEvent), <code>arrayBufferToBase64</code> (function), and <code>setStatusMessage</code> (function).
+        Edit the JavaScript function body above to customize how WebSocket messages are handled, it now outputs receiving data to dev console.
+        The function will receive: <code>event</code> (MessageEvent), <code>arrayBufferToBase64</code> (function).
       </p>
     </div>
   );
