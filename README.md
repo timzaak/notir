@@ -15,7 +15,9 @@ It has been deployed on the public server, you can try it out right away: http:/
 
 Please change `uuid` to whatever you want, and now you can publish messages to the server like this:
 ```bash
-curl -X POST http://notir.fornecode.com:5800/pub?id=${uuid} -H 'Content-Type: application/json' -d '{"msg": "hello world"}'
+curl -X POST http://notir.fornecode.com:5800/pub?id=${uuid} \
+ -H 'Content-Type: application/json' \
+ -d '{"msg": "hello world"}'
 ```
 
 <img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
@@ -29,7 +31,9 @@ docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
 # open browser: http://127.0.0.1:5800?id=test
 
 # Publish the message via:
-curl -X POST http://127.0.0.1:5800/pub?id=test -H 'Content-Type: application/json' -d '{"msg": "hello world"}'
+curl -X POST http://127.0.0.1:5800/pub?id=test \
+ -H 'Content-Type: application/json' \
+ -d '{"msg": "hello world"}'
 ```
 
 ## API Endpoints
