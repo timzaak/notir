@@ -64,6 +64,11 @@ function App() {
   const [wsMessageHandler, setWsMessageHandler] = useState<(event: MessageEvent) => void>(() => defaultWsMessageHandler);
   const [isApplyingCode, setIsApplyingCode] = useState(false);
 
+  const wsMessageHandlerRef = useRef(wsMessageHandler);
+  useEffect(() => {
+    wsMessageHandlerRef.current = wsMessageHandler
+  }, [wsMessageHandler])
+
   // Function to compile and apply the WebSocket message handler code
   const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad: boolean = false) => {
     if (!isInitialLoad) {
@@ -74,13 +79,11 @@ function App() {
     } else {
       setStatusMessage("Initializing WebSocket handler...");
     }
-
     try {
-      const dynamicHandler = new Function('event', 'arrayBufferToBase64', codeToApply.startsWith('(') ? `return ${codeToApply}(event, arrayBufferToBase64)` : codeToApply);
-
+      const dynamicHandler = new Function('event', 'arrayBufferToBase64', `(${codeToApply})(event, arrayBufferToBase64)` )
       setWsMessageHandler(() => (event: MessageEvent) => {
         try {
-          dynamicHandler(event, arrayBufferToBase64, (msg: string) => setStatusMessage(msg));
+          dynamicHandler(event, arrayBufferToBase64);
         } catch (e) {
           console.error(`Error executing dynamic WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, e);
           setStatusMessage(`Error in custom message handler. Check console. Using default handler.`);
@@ -149,8 +152,7 @@ function App() {
     };
 
     ws.current.onmessage = (event) => {
-      // Use the current wsMessageHandler state
-      wsMessageHandler(event);
+      wsMessageHandlerRef.current(event);
     };
 
     ws.current.onclose = (event) => {
@@ -194,17 +196,26 @@ function App() {
     <div className="container mx-auto px-4 py-8 text-center">
       <h1 className="text-5xl font-bold mb-5">NOTIR</h1>
       <div id="status" className={statusMessageClasses.trim()}>{statusMessage}</div>
+      <div id="devtools-shortcut" className="mt-4 text-left">
+        <p className="text-sm text-gray-600">
+          Press Ctrl+Shift+J (Windows/Linux) or Cmd+Option+J (Mac) to see message.
+        </p>
+      </div>
       <CodeEditor
         code={editorCode}
         setCode={setEditorCode}
         submitCode={handleCodeSubmit}
         isLoading={isApplyingCode}
       />
-      <div id="devtools-shortcut" className="mt-4">
-        <p className="text-sm text-gray-600">
-          Press Ctrl+Shift+J (Windows/Linux) or Cmd+Option+J (Mac) to open the Developer Console to see messages.
+      <footer className="mt-8 text-sm text-gray-500">
+        <p className='text-gray-800'>If you have any issues, please report them on <a href="https://github.com/timzaak/notir/issues?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">GitHub Issue</a>.</p>
+        <br/>
+        <p>
+          <a href="https://github.com/timzaak/notir?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Source Code</a>
+          {' | '}
+          <a href="https://blog.fornetcode.com?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Blog</a>
         </p>
-      </div>
+      </footer>
     </div>
   );
 }
