@@ -65,6 +65,7 @@ function App() {
   // Explicitly type wsMessageHandler state
   const [wsMessageHandler, setWsMessageHandler] = useState<(event: MessageEvent) => void>(() => defaultWsMessageHandler);
   const [isApplyingCode, setIsApplyingCode] = useState(false);
+  const [versionInfo, setVersionInfo] = useState('');
 
   const wsMessageHandlerRef = useRef(wsMessageHandler);
   useEffect(() => {
@@ -148,10 +149,8 @@ function App() {
 
     setStatusMessage(`Attempting to connect WebSocket with ID: ${id}`);
 
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = import.meta.env.DEV ? `ws://127.0.0.1:5800/sub?id=${id}`: `${wsProtocol}//${window.location.host}/sub?id=${id}`;
-
-    ws.current = new WebSocket(wsUrl);
+    // const wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/sub?id=${id}`;
+    ws.current = new WebSocket(`/sub?id=${id}`);
 
     ws.current.onopen = () => {
       setStatusMessage(`Connected with ID: ${id}`);
@@ -196,6 +195,14 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    // const httpPrefix = import.meta.env.DEV ? `http://localhost:5800/`: `/`;
+    fetch(`/version`)
+      .then(response => response.text())
+      .then(data => setVersionInfo(data))
+      .catch(error => console.error('Error fetching version:', error));
+  }, []);
+
   const statusIsError = statusMessage.toLowerCase().includes('error');
   const statusMessageClasses = `
     p-3 mb-5 rounded-md shadow-md text-left
@@ -229,6 +236,7 @@ function App() {
           {' | '}
           <a href="https://blog.fornetcode.com?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Blog</a>
         </p>
+        {versionInfo && <p className="mt-4">{versionInfo}</p>}
       </footer>
     </div>
   );

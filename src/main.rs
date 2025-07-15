@@ -228,13 +228,16 @@ async fn main() {
             .path("{*path}").get(static_embed::<Assets>().fallback("index.html"));
 
     let router = Router::new()
-        .push(Router::with_path("health").goal(health))
-        .push(Router::with_path("version").goal(version))
         .push(Router::with_path("sub").goal(user_connected))
         .push(Router::with_path("pub").post(publish_message))
+        .push(Router::with_path("health").goal(health))
+        .push(Router::with_path("version").goal(version))
         .push(static_files);
 
-    tracing::debug!("{:?}", router);
+
+
+
+    println!("{:?}", router);
     println!("Notir server start, binding: {:?}", acceptor.local_addr().unwrap());
 
     // Start serving requests
