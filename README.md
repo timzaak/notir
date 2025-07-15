@@ -20,6 +20,12 @@ Please change `uuid` to whatever you want, and now you can publish messages to t
 curl -X POST http://notir.fornecode.com:5800/pub?id=${uuid} \
  -H 'Content-Type: application/json' \
  -d '{"msg": "hello world"}'
+ 
+# You can also publish with mode PingPong, which you can send response via WebSocket to the client.
+curl -X POST http://notir.fornecode.com:5800/pub?id=${uuid}&mode=ping_pong \
+ -H 'Content-Type: application/json' \
+ -d '{"msg": "hello world"}'
+  
 ```
 
 <img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
@@ -40,10 +46,11 @@ curl -X POST http://127.0.0.1:5800/pub?id=test \
 
 ## API Endpoints
 
-*   `GET /sub?id=<user_id>`:
+*   `GET /sub?id=<user_id>?mode=<Mode>`:
     *   Establishes a WebSocket connection for a user to subscribe to messages.
     *   Query Parameters:
         *   `id` (required): A unique string identifier for the client. Cannot be empty.
+        *   `mode` (optional): The mode of subscription. Can be `shot` or `ping_pong`. Defaults to `shot`, when use `ping_pong`, Subscriber(Websocket) can send message back to Publisher(http request as response).
     *   Upgrades the connection to WebSocket. Messages from other users will be pushed to this WebSocket connection.
 *   `POST /pub?id=<user_id>`:
     *   Publishes a message from a client to all *other* connected clients.

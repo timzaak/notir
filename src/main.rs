@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::LazyLock;
 
 use rust_embed::RustEmbed;
@@ -11,13 +11,28 @@ use tracing_subscriber::EnvFilter;
 use futures_util::{FutureExt, StreamExt};
 use salvo::http::Mime;
 use salvo::http::headers::ContentType;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use dashmap::DashMap;
+use serde::Deserialize;
+use bytes::Bytes;
+use nanoid::nanoid;
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(rename_all = "snake_case")]
+enum Mode {
+    #[default]
+    Shot,
+    PingPong,
+}
 
 type Users = RwLock<HashMap<String, mpsc::UnboundedSender<Result<Message, salvo::Error>>>>;
+type CallbackChannels = DashMap<String, VecDeque<(String, oneshot::Sender<Bytes>)>>;
 
 static ONLINE_USERS: LazyLock<Users> = LazyLock::new(Users::default);
+static CALLBACK_CHANNELS: LazyLock<CallbackChannels> = LazyLock::new(CallbackChannels::default);
 
+const HEART_BEATE:&[u8] = "!".as_bytes();
 #[handler]
 async fn user_connected(req: &mut Request, res: &mut Response) -> Result<(), StatusError> {
     let string_uid = req
@@ -55,8 +70,19 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 
         while let Some(result) = user_ws_rx.next().await {
             match result {
-                Ok(_) => {
-                    //ignore heartbeat
+                Ok(msg) => {
+                    let is_text = msg.is_text();
+                    let data: Bytes = msg.as_bytes().to_vec().into();
+                    if is_text && data == HEART_BEATE {
+                        continue
+                    }
+                    if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&my_id_clone_for_task) {
+                        if let Some((_id, tx)) = entry.pop_front() {
+                            if let Err(e) = tx.send(data) {
+                                tracing::error!("Failed to send message to callback channel for user {my_id_clone_for_task}: {e:?}");
+                            }
+                        }
+                    }
                 }
                 Err(e) => {
                     tracing::error!("websocket error(uid={}): {}", my_id_clone_for_task, e);
@@ -73,74 +99,105 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 async fn user_disconnected(my_id: String) {
     tracing::info!("good bye user: {}", my_id);
     ONLINE_USERS.write().await.remove(&my_id);
+    CALLBACK_CHANNELS.remove(&my_id);
 }
 
 #[handler]
 async fn publish_message(req: &mut Request, res: &mut Response) {
-    let string_uid = req
-        .query::<String>("id")
-        .ok_or_else(|| StatusError::bad_request().detail("Missing 'id' query parameter for /pub"));
-    let string_uid = match string_uid {
-        Ok(id) => {
-            if id.is_empty() {
-                res.render(
-                    StatusError::bad_request()
-                        .detail("'id' query parameter cannot be empty for /pub"),
-                );
-                return;
-            }
-            id
-        }
-        Err(_) => {
-            res.render(StatusError::bad_request().detail("Missing 'id' query parameter for /pub"));
-            return;
-        }
-    };
-    let content_type = req
-        .content_type()
-        .unwrap_or_else(|| Mime::from(ContentType::octet_stream()));
+    let string_uid = req.query::<String>("id").unwrap_or_default();
+    if string_uid.is_empty() {
+        res.status_code(StatusCode::BAD_REQUEST);
+        res.body("Missing 'id' query parameter for /pub");
+        return;
+    }
+    let mode = req.query::<Mode>("mode").unwrap_or_default();
+
+    let content_type = req.content_type().unwrap_or_else(|| Mime::from(ContentType::octet_stream()));
     let body_bytes = match req.payload().await {
         Ok(bytes) => bytes,
         Err(e) => {
             tracing::error!("Failed to read payload for /pub: {}", e);
-            res.render(StatusError::internal_server_error().detail("Failed to read request body"));
+            res.status_code(StatusCode::INTERNAL_SERVER_ERROR);
+            res.body("Failed to read request body");
             return;
         }
     };
 
-    let users_map = ONLINE_USERS.read().await;
-    if let Some(tx) = users_map.get(&string_uid) {
-        let content_type = content_type.to_string();
-        let msg = if content_type.starts_with("application/json") {
-            match String::from_utf8(body_bytes.to_vec()) {
-                Ok(text_payload) => Message::text(text_payload),
-                Err(_) => Message::binary(body_bytes.to_owned()), // Fallback to binary if not valid UTF-8
+    match mode {
+        Mode::Shot => {
+            let users_map = ONLINE_USERS.read().await;
+            if let Some(user_tx) = users_map.get(&string_uid) {
+                let content_type_str = content_type.to_string();
+                let msg = if content_type_str.starts_with("application/json") || content_type_str.starts_with("text/") {
+                    match String::from_utf8(body_bytes.to_vec()) {
+                        Ok(text_payload) => Message::text(text_payload),
+                        Err(_) => {
+                            res.status_code(StatusCode::BAD_REQUEST);
+                            res.body("Invalid UTF-8 in body");
+                            return;
+                        }
+                    }
+                } else {
+                    Message::binary(body_bytes.to_vec())
+                };
+
+                if user_tx.send(Ok(msg)).is_err() {
+                    drop(users_map);
+                    ONLINE_USERS.write().await.remove(&string_uid);
+                    res.status_code(StatusCode::NOT_FOUND);
+                    res.body("User disconnected during send");
+                } else {
+                    res.status_code(StatusCode::OK);
+                }
+            } else {
+                res.status_code(StatusCode::NOT_FOUND);
+                res.body("User ID not found");
             }
-        } else if content_type.starts_with("text/") {
-            match String::from_utf8(body_bytes.to_vec()) {
-                Ok(text_payload) => Message::text(text_payload),
-                Err(_) => {
-                    // if text/* is not valid utf8, it's a bad request.
-                    res.render(StatusError::bad_request().detail("Invalid UTF-8 in text body"));
+        }
+        Mode::PingPong => {
+            let (tx, rx) = oneshot::channel();
+            let users_map = ONLINE_USERS.read().await;
+            if let Some(user_tx) = users_map.get(&string_uid) {
+                let content_type_str = content_type.to_string();
+                let msg = if content_type_str.starts_with("application/json") || content_type_str.starts_with("text/") {
+                    match String::from_utf8(body_bytes.to_vec()) {
+                        Ok(text_payload) => Message::text(text_payload),
+                        Err(_) => {
+                            res.status_code(StatusCode::BAD_REQUEST);
+                            res.body("Invalid UTF-8 in body");
+                            return;
+                        }
+                    }
+                } else {
+                    Message::binary(body_bytes.to_vec())
+                };
+                let id = nanoid!();
+                CALLBACK_CHANNELS.entry(string_uid.clone()).or_default().push_back((id, tx));
+                if user_tx.send(Ok(msg)).is_err() {
+                    drop(users_map);
+                    ONLINE_USERS.write().await.remove(&string_uid);
+                    let _ = CALLBACK_CHANNELS.entry(string_uid.clone()).or_default().pop_front();
+                    res.status_code(StatusCode::NOT_FOUND);
+                    res.body("User disconnected during send");
                     return;
                 }
+            } else {
+                res.status_code(StatusCode::NOT_FOUND);
+                res.body("User ID not found");
+                return;
             }
-        } else {
-            Message::binary(body_bytes.to_owned())
-        };
 
-        if tx.send(Ok(msg)).is_ok() {
-            res.status_code(StatusCode::OK);
-            //res.render("Message published");
-        } else {
-            drop(users_map); // Release read lock before acquiring write lock
-            ONLINE_USERS.write().await.remove(&string_uid);
-            res.status_code(StatusCode::NOT_FOUND);
-            //res.render("User disconnected during send");
+            match rx.await {
+                Ok(response) => {
+                    res.headers_mut().insert(salvo::http::header::CONTENT_TYPE, "application/octet-stream".parse().unwrap());
+                    res.write_body(response).ok();
+                }
+                Err(_) => {
+                    res.status_code(StatusCode::INTERNAL_SERVER_ERROR);
+                    res.body("Failed to receive response from websocket");
+                }
+            }
         }
-    } else {
-        res.status_code(StatusCode::NOT_FOUND);
-        //res.render("User ID not found");
     }
 }
 

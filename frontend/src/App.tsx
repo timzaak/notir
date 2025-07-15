@@ -33,10 +33,12 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 // Default code for the editor
-const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer: ArrayBuffer) => string
-(event, arrayBufferToBase64) => {
+const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer: ArrayBuffer) => string, sendMessage: (message: string | ArrayBufferLike | Blob | ArrayBufferView) => void
+(event, arrayBufferToBase64, sendMessage) => {
   if (typeof event.data === 'string') {
     console.log(event.data);
+    // Attention: sendMessage only works when publish message via /pub?id=\${userId}&mod=ping_pong
+    // sendMessage('response');
   } else if (event.data instanceof ArrayBuffer) {
     const base64String = arrayBufferToBase64(event.data);
     console.log(base64String);
@@ -80,10 +82,17 @@ function App() {
       setStatusMessage("Initializing WebSocket handler...");
     }
     try {
-      const dynamicHandler = new Function('event', 'arrayBufferToBase64', `(${codeToApply})(event, arrayBufferToBase64)` )
+      const dynamicHandler = new Function('event', 'arrayBufferToBase64', 'sendMessage', `(${codeToApply})(event, arrayBufferToBase64, sendMessage)` )
       setWsMessageHandler(() => (event: MessageEvent) => {
         try {
-          dynamicHandler(event, arrayBufferToBase64);
+          const sendMessage = (message: string | ArrayBufferLike | Blob | ArrayBufferView) => {
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+              ws.current.send(message);
+            } else {
+              console.error("WebSocket is not connected.");
+            }
+          };
+          dynamicHandler(event, arrayBufferToBase64, sendMessage);
         } catch (e) {
           console.error(`Error executing dynamic WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, e);
           setStatusMessage(`Error in custom message handler. Check console. Using default handler.`);
@@ -119,6 +128,10 @@ function App() {
 
   const handleCodeSubmit = () => {
     compileAndApplyCode(editorCode, false);
+  }
+
+  const resetCode = () => {
+    setEditorCode(defaultEditorCode);
   }
 
   useEffect(() => {
@@ -205,6 +218,7 @@ function App() {
         code={editorCode}
         setCode={setEditorCode}
         submitCode={handleCodeSubmit}
+        resetCode={resetCode}
         isLoading={isApplyingCode}
       />
       <footer className="mt-8 text-sm text-gray-500">
