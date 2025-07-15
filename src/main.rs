@@ -234,10 +234,6 @@ async fn main() {
         .push(Router::with_path("version").goal(version))
         .push(static_files);
 
-
-
-
-    println!("{:?}", router);
     println!("Notir server start, binding: {:?}", acceptor.local_addr().unwrap());
 
     // Start serving requests
