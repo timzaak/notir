@@ -235,8 +235,15 @@ function App() {
           <a href="https://github.com/timzaak/notir?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Source Code</a>
           {' | '}
           <a href="https://blog.fornetcode.com?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Blog</a>
+          {versionInfo && (
+            <>
+              {' | '}
+              <a href="https://github.com/timzaak/notir/releases?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">
+                v{versionInfo}
+              </a>
+            </>
+          )}
         </p>
-        {versionInfo && <p className="mt-4">{versionInfo}</p>}
       </footer>
     </div>
   );
