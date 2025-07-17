@@ -17,6 +17,7 @@ use salvo::http::headers::ContentType;
 use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio::time::{timeout, Duration};
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(rename_all = "snake_case")]
@@ -161,6 +162,7 @@ async fn publish_message(req: &mut Request, res: &mut Response) {
             }
         }
         Mode::PingPong => {
+            let id = nanoid!();
             let (tx, rx) = oneshot::channel();
             let users_map = ONLINE_USERS.read().await;
             if let Some(user_tx) = users_map.get(&string_uid) {
@@ -179,11 +181,11 @@ async fn publish_message(req: &mut Request, res: &mut Response) {
                 } else {
                     Message::binary(body_bytes.to_vec())
                 };
-                let id = nanoid!();
+
                 CALLBACK_CHANNELS
                     .entry(string_uid.clone())
                     .or_default()
-                    .push_back((id, tx));
+                    .push_back((id.clone(), tx));
                 if user_tx.send(Ok(msg)).is_err() {
                     drop(users_map);
                     ONLINE_USERS.write().await.remove(&string_uid);
@@ -201,17 +203,23 @@ async fn publish_message(req: &mut Request, res: &mut Response) {
                 return;
             }
 
-            match rx.await {
-                Ok(response) => {
+            match timeout(Duration::from_secs(5), rx).await {
+                Ok(Ok(response)) => {
                     res.headers_mut().insert(
                         salvo::http::header::CONTENT_TYPE,
                         "application/octet-stream".parse().unwrap(),
                     );
                     res.write_body(response).ok();
                 }
+                Ok(Err(_)) => {
+                    res.status_code(StatusCode::NO_CONTENT);
+                }
                 Err(_) => {
-                    res.status_code(StatusCode::INTERNAL_SERVER_ERROR);
-                    res.body("Failed to receive response from websocket");
+                    if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&string_uid) {
+                        entry.retain(|(callback_id, _)| callback_id != &id);
+                    }
+                    res.status_code(StatusCode::REQUEST_TIMEOUT);
+                    res.body("Request timeout after 5 seconds");
                 }
             }
         }
