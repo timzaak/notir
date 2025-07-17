@@ -63,3 +63,12 @@ curl -X POST http://127.0.0.1:5800/pub?id=test \
         *   `200 OK`: If the message was successfully sent to the target user's channel.
         *   `400 Bad Request`: If the `id` query parameter is missing or empty, or if a `text/*` body contains invalid UTF-8.
         *   `404 Not Found`: If the specified `user_id` is not currently connected.
+
+## License
+
+This project is dual-licensed under either:
+
+- **Apache License 2.0** ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- **MIT License** ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+You may choose either license at your option.

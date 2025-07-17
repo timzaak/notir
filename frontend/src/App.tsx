@@ -1,102 +1,104 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import CodeEditor from './components/CodeEditor';
 
-
-const defaultWsMessageHandler = (event: MessageEvent) => {
-  if (typeof event.data === 'string') {
-    console.log(event.data);
-  } else if (event.data instanceof ArrayBuffer) {
-    const base64String = arrayBufferToBase64(event.data);
-    console.log(base64String);
-  } else if (event.data instanceof Blob) {
-    // console.log("Received binary message (Blob)");
-    const reader = new FileReader();
-    reader.onload = function() {
-      const base64String = arrayBufferToBase64(reader.result as ArrayBuffer);
-      console.log(base64String);
-    };
-    reader.readAsArrayBuffer(event.data);
-  } else {
-    console.warn("Received unknown message type:", event.data);
-  }
-};
-
-// Helper function (can be outside the component or imported)
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = '';
+// 工具函数
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);
   }
   return window.btoa(binary);
-}
+};
 
-// Default code for the editor
+// 默认消息处理器
+const defaultWsMessageHandler = (event: MessageEvent) => {
+  const { data } = event;
+
+  if (typeof data === 'string') {
+    console.log(data);
+  } else if (data instanceof ArrayBuffer) {
+    console.log(arrayBufferToBase64(data));
+  } else if (data instanceof Blob) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      console.log(arrayBufferToBase64(reader.result as ArrayBuffer));
+    };
+    reader.readAsArrayBuffer(data);
+  } else {
+    console.warn("Received unknown message type:", data);
+  }
+};
+
+// 默认编辑器代码
 const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer: ArrayBuffer) => string, sendMessage: (message: string | ArrayBufferLike | Blob | ArrayBufferView) => void
 (event, arrayBufferToBase64, sendMessage) => {
-  if (typeof event.data === 'string') {
-    console.log(event.data);
+  const { data } = event;
+  
+  if (typeof data === 'string') {
+    console.log(data);
     // Attention: sendMessage only works when publish message via /pub?id=\${userId}&mod=ping_pong
     // sendMessage('response');
-  } else if (event.data instanceof ArrayBuffer) {
-    const base64String = arrayBufferToBase64(event.data);
-    console.log(base64String);
-  } else if (event.data instanceof Blob) {
+  } else if (data instanceof ArrayBuffer) {
+    console.log(arrayBufferToBase64(data));
+  } else if (data instanceof Blob) {
     const reader = new FileReader();
-    reader.onload = function() {
-      const base64String = arrayBufferToBase64(reader.result);
-      console.log(base64String);
+    reader.onload = () => {
+      console.log(arrayBufferToBase64(reader.result));
     };
-    reader.readAsArrayBuffer(event.data);
+    reader.readAsArrayBuffer(data);
   } else {
-    console.warn("Received unknown message type:", event.data);
+    console.warn("Received unknown message type:", data);
   }
 }
 `;
 
 function App() {
   const [statusMessage, setStatusMessage] = useState('Checking for ID in URL...');
-  const ws = useRef<WebSocket | null>(null);
-  const heartbeatIntervalId = useRef<number | null>(null);
-  const [editorCode, setEditorCode] = useState(() => {
-    return localStorage.getItem('wsMessageHandlerCode') || defaultEditorCode;
-  });
-  // Explicitly type wsMessageHandler state
+  const [editorCode, setEditorCode] = useState(() =>
+    localStorage.getItem('wsMessageHandlerCode') || defaultEditorCode
+  );
   const [wsMessageHandler, setWsMessageHandler] = useState<(event: MessageEvent) => void>(() => defaultWsMessageHandler);
   const [isApplyingCode, setIsApplyingCode] = useState(false);
   const [versionInfo, setVersionInfo] = useState('');
 
+  const ws = useRef<WebSocket | null>(null);
+  const heartbeatIntervalId = useRef<number | null>(null);
   const wsMessageHandlerRef = useRef(wsMessageHandler);
-  useEffect(() => {
-    wsMessageHandlerRef.current = wsMessageHandler
-  }, [wsMessageHandler])
 
-  // Function to compile and apply the WebSocket message handler code
-  const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad: boolean = false) => {
+  useEffect(() => {
+    wsMessageHandlerRef.current = wsMessageHandler;
+  }, [wsMessageHandler]);
+
+  // 编译并应用 WebSocket 消息处理器代码
+  const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad = false) => {
+    const statusMsg = isInitialLoad ? "Initializing WebSocket handler..." : "Applying new code...";
+    setStatusMessage(statusMsg);
+
     if (!isInitialLoad) {
       setIsApplyingCode(true);
-      setStatusMessage("Applying new code...");
-      // Short delay to allow UI to update before potentially blocking compilation
       await new Promise(resolve => setTimeout(resolve, 50));
-    } else {
-      setStatusMessage("Initializing WebSocket handler...");
     }
+
     try {
-      const dynamicHandler = new Function('event', 'arrayBufferToBase64', 'sendMessage', `(${codeToApply})(event, arrayBufferToBase64, sendMessage)` )
+      const dynamicHandler = new Function('event', 'arrayBufferToBase64', 'sendMessage',
+        `(${codeToApply})(event, arrayBufferToBase64, sendMessage)`
+      );
+
+      const createSendMessage = () => (message: string | ArrayBufferLike | Blob | ArrayBufferView) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+          ws.current.send(message);
+        } else {
+          console.error("WebSocket is not connected.");
+        }
+      };
+
       setWsMessageHandler(() => (event: MessageEvent) => {
         try {
-          const sendMessage = (message: string | ArrayBufferLike | Blob | ArrayBufferView) => {
-            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-              ws.current.send(message);
-            } else {
-              console.error("WebSocket is not connected.");
-            }
-          };
-          dynamicHandler(event, arrayBufferToBase64, sendMessage);
+          dynamicHandler(event, arrayBufferToBase64, createSendMessage());
         } catch (e) {
-          console.error(`Error executing dynamic WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, e);
-          setStatusMessage(`Error in custom message handler. Check console. Using default handler.`);
+          console.error(`Error executing WebSocket handler:`, e);
+          setStatusMessage(`Error in custom message handler. Using default handler.`);
           defaultWsMessageHandler(event);
         }
       });
@@ -106,11 +108,11 @@ function App() {
         setStatusMessage("WebSocket message handler updated successfully!");
       }
     } catch (error) {
-      console.error(`Error compiling WebSocket message handler (loaded from ${isInitialLoad ? 'storage/default' : 'editor'}):`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Error compiling WebSocket handler:`, error);
       setStatusMessage(`Error compiling code: ${errorMessage}. ${isInitialLoad ? 'Using default handler.' : 'Previous handler remains active.'}`);
+
       if (isInitialLoad) {
-        // Fallback to default handler if initial code from storage is bad
         setWsMessageHandler(() => defaultWsMessageHandler);
       }
     } finally {
@@ -118,7 +120,7 @@ function App() {
         setIsApplyingCode(false);
       }
     }
-  }, [setStatusMessage]); // editorCode is not a dependency here, it's passed as an argument
+  }, []);
 
   // Effect for applying initial code on mount
   useEffect(() => {
@@ -137,10 +139,7 @@ function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    let id = params.get('id');
-    if(import.meta.env.DEV && !id) {
-      id = 'test'
-    }
+    const id = params.get('id') || (import.meta.env.DEV ? 'test' : null);
 
     if (!id) {
       setStatusMessage('Error: No ID found in URL query string. Please append ?id=your_id to the URL.');
@@ -148,50 +147,42 @@ function App() {
     }
 
     setStatusMessage(`Attempting to connect WebSocket with ID: ${id}`);
-
-    // const wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/sub?id=${id}`;
     ws.current = new WebSocket(`/sub?id=${id}`);
+
+    const clearHeartbeat = () => {
+      if (heartbeatIntervalId.current) {
+        clearInterval(heartbeatIntervalId.current);
+        heartbeatIntervalId.current = null;
+      }
+    };
 
     ws.current.onopen = () => {
       setStatusMessage(`Connected with ID: ${id}`);
       console.log(`WebSocket connected with ID: ${id}`);
 
       heartbeatIntervalId.current = window.setInterval(() => {
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        if (ws.current?.readyState === WebSocket.OPEN) {
           ws.current.send('!');
         }
       }, 30000);
     };
 
-    ws.current.onmessage = (event) => {
-      wsMessageHandlerRef.current(event);
-    };
+    ws.current.onmessage = (event) => wsMessageHandlerRef.current(event);
 
     ws.current.onclose = (event) => {
       setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
-      if (heartbeatIntervalId.current) {
-        clearInterval(heartbeatIntervalId.current);
-        heartbeatIntervalId.current = null;
-      }
+      clearHeartbeat();
     };
 
     ws.current.onerror = (error) => {
       setStatusMessage(`WebSocket Error with ID: ${id}. See console for details.`);
       console.error(`WebSocket Error with ID: ${id}:`, error);
-      if (heartbeatIntervalId.current) {
-        clearInterval(heartbeatIntervalId.current);
-        heartbeatIntervalId.current = null;
-      }
+      clearHeartbeat();
     };
 
-    // Cleanup function
     return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-      if (heartbeatIntervalId.current) {
-        clearInterval(heartbeatIntervalId.current);
-      }
+      ws.current?.close();
+      clearHeartbeat();
     };
   }, []);
 
@@ -230,7 +221,7 @@ function App() {
       />
       <footer className="mt-8 text-sm text-gray-500">
         <p className='text-gray-800'>If you have any issues, please report them on <a href="https://github.com/timzaak/notir/issues?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">GitHub Issue</a>.</p>
-        <br/>
+        <br />
         <p>
           <a href="https://github.com/timzaak/notir?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">Source Code</a>
           {' | '}
