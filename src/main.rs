@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::sync::LazyLock;
 
@@ -16,8 +17,8 @@ use salvo::http::Mime;
 use salvo::http::headers::ContentType;
 use serde::Deserialize;
 use tokio::sync::{RwLock, mpsc, oneshot};
+use tokio::time::{Duration, interval, timeout};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio::time::{timeout, Duration};
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(rename_all = "snake_case")]
@@ -33,7 +34,6 @@ type CallbackChannels = DashMap<String, VecDeque<(String, oneshot::Sender<Bytes>
 static ONLINE_USERS: LazyLock<Users> = LazyLock::new(Users::default);
 static CALLBACK_CHANNELS: LazyLock<CallbackChannels> = LazyLock::new(CallbackChannels::default);
 
-const HEART_BEATE: &[u8] = "!".as_bytes();
 #[handler]
 async fn user_connected(req: &mut Request, res: &mut Response) -> Result<(), StatusError> {
     let string_uid = req
@@ -49,20 +49,37 @@ async fn user_connected(req: &mut Request, res: &mut Response) -> Result<(), Sta
 async fn handle_socket(ws: WebSocket, my_id: String) {
     tracing::info!("new chat user: {}", my_id);
 
-    // Split the socket into a sender and receive of messages.
     let (user_ws_tx, mut user_ws_rx) = ws.split();
 
-    // Use an unbounded channel to handle buffering and flushing of messages
-    // to the websocket...
     let (tx, rx) = mpsc::unbounded_channel();
     let rx = UnboundedReceiverStream::new(rx);
     let fut = rx.forward(user_ws_tx).map(|result| {
-        if let Err(e) = result {
-            tracing::error!(error = ?e, "websocket send error");
-        }
+        // if let Err(e) = result {
+        //    tracing::error!(error = e, "websocket send error");
+        // }
     });
     tokio::task::spawn(fut);
     let my_id_clone_for_task = my_id.clone();
+    let tx_clone_for_ping = tx.clone();
+    let my_id_clone_for_ping = my_id.clone();
+
+    let ping_task = async move {
+        let mut ping_interval = interval(Duration::from_secs(30));
+        ping_interval.tick().await; //jump first trigger
+
+        loop {
+            ping_interval.tick().await;
+            if let Err(_) = tx_clone_for_ping.send(Ok(Message::ping(vec![]))) {
+                tracing::debug!(
+                    "Failed to send ping to user {my_id_clone_for_ping}, connection likely closed"
+                );
+                break;
+            }
+            tracing::debug!("Sent ping to user: {my_id_clone_for_ping}");
+        }
+    };
+    tokio::task::spawn(ping_task);
+
     let fut = async move {
         ONLINE_USERS
             .write()
@@ -72,11 +89,15 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
         while let Some(result) = user_ws_rx.next().await {
             match result {
                 Ok(msg) => {
-                    let is_text = msg.is_text();
-                    let data: Bytes = msg.as_bytes().to_vec().into();
-                    if is_text && data == HEART_BEATE {
+                    if msg.is_pong() {
+                        tracing::debug!(
+                            "Received pong from user: {}, ignoring",
+                            my_id_clone_for_task
+                        );
                         continue;
                     }
+
+                    let data: Bytes = msg.as_bytes().to_vec().into();
                     if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&my_id_clone_for_task) {
                         if let Some((_id, tx)) = entry.pop_front() {
                             if let Err(e) = tx.send(data) {
@@ -87,8 +108,7 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
                         }
                     }
                 }
-                Err(e) => {
-                    tracing::error!("websocket error(uid={}): {}", my_id_clone_for_task, e);
+                Err(_e) => {
                     break;
                 }
             };
@@ -264,6 +284,5 @@ async fn main() {
         acceptor.local_addr().unwrap()
     );
 
-    // Start serving requests
     Server::new(acceptor).serve(router).await;
 }

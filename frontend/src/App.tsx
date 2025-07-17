@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import CodeEditor from './components/CodeEditor';
 
-// 工具函数
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -11,7 +10,6 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   return window.btoa(binary);
 };
 
-// 默认消息处理器
 const defaultWsMessageHandler = (event: MessageEvent) => {
   const { data } = event;
 
@@ -63,7 +61,6 @@ function App() {
   const [versionInfo, setVersionInfo] = useState('');
 
   const ws = useRef<WebSocket | null>(null);
-  const heartbeatIntervalId = useRef<number | null>(null);
   const wsMessageHandlerRef = useRef(wsMessageHandler);
 
   useEffect(() => {
@@ -149,40 +146,24 @@ function App() {
     setStatusMessage(`Attempting to connect WebSocket with ID: ${id}`);
     ws.current = new WebSocket(`/sub?id=${id}`);
 
-    const clearHeartbeat = () => {
-      if (heartbeatIntervalId.current) {
-        clearInterval(heartbeatIntervalId.current);
-        heartbeatIntervalId.current = null;
-      }
-    };
-
     ws.current.onopen = () => {
       setStatusMessage(`Connected with ID: ${id}`);
       console.log(`WebSocket connected with ID: ${id}`);
-
-      heartbeatIntervalId.current = window.setInterval(() => {
-        if (ws.current?.readyState === WebSocket.OPEN) {
-          ws.current.send('!');
-        }
-      }, 30000);
     };
 
     ws.current.onmessage = (event) => wsMessageHandlerRef.current(event);
 
     ws.current.onclose = (event) => {
       setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
-      clearHeartbeat();
     };
 
     ws.current.onerror = (error) => {
       setStatusMessage(`WebSocket Error with ID: ${id}. See console for details.`);
       console.error(`WebSocket Error with ID: ${id}:`, error);
-      clearHeartbeat();
     };
 
     return () => {
       ws.current?.close();
-      clearHeartbeat();
     };
   }, []);
 
