@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import CodeEditor from './components/CodeEditor';
+import WebSocketConfigComponent from './components/WebSocketConfig';
+import {type WebSocketConfig, WebSocketManager} from './utils/WebSocketManager';
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
@@ -28,7 +30,6 @@ const defaultWsMessageHandler = (event: MessageEvent) => {
   }
 };
 
-// 默认编辑器代码
 const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer: ArrayBuffer) => string, sendMessage: (message: string | ArrayBufferLike | Blob | ArrayBufferView) => void
 (event, arrayBufferToBase64, sendMessage) => {
   const { data } = event;
@@ -60,12 +61,35 @@ function App() {
   const [isApplyingCode, setIsApplyingCode] = useState(false);
   const [versionInfo, setVersionInfo] = useState('');
 
-  const ws = useRef<WebSocket | null>(null);
+  const [wsConfig, setWsConfig] = useState<WebSocketConfig>(() => {
+    const savedConfig = localStorage.getItem('wsConfig');
+    if (savedConfig) {
+      try {
+        return JSON.parse(savedConfig);
+      } catch {
+        console.warn('Failed to parse saved WebSocket config, using defaults');
+      }
+    }
+    return {
+      enableReconnect: false,
+      reconnectInterval: 5000,
+      maxReconnectAttempts: 5
+    };
+  });
+
+  const wsManager = useRef<WebSocketManager | null>(null);
   const wsMessageHandlerRef = useRef(wsMessageHandler);
 
   useEffect(() => {
     wsMessageHandlerRef.current = wsMessageHandler;
   }, [wsMessageHandler]);
+
+  // 处理WebSocket配置变更
+  const handleConfigChange = useCallback((newConfig: WebSocketConfig) => {
+    setWsConfig(newConfig);
+    wsManager.current?.setConfig(newConfig);
+    localStorage.setItem('wsConfig', JSON.stringify(newConfig));
+  }, []);
 
   // 编译并应用 WebSocket 消息处理器代码
   const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad = false) => {
@@ -83,8 +107,8 @@ function App() {
       );
 
       const createSendMessage = () => (message: string | ArrayBufferLike | Blob | ArrayBufferView) => {
-        if (ws.current?.readyState === WebSocket.OPEN) {
-          ws.current.send(message);
+        if (wsManager.current?.readyState === WebSocket.OPEN) {
+          wsManager.current.send(message);
         } else {
           console.error("WebSocket is not connected.");
         }
@@ -144,26 +168,31 @@ function App() {
     }
 
     setStatusMessage(`Attempting to connect WebSocket with ID: ${id}`);
-    ws.current = new WebSocket(`/sub?id=${id}`);
 
-    ws.current.onopen = () => {
+    wsManager.current?.close()
+
+    wsManager.current = new WebSocketManager(`/sub?id=${id}`, wsConfig);
+
+    wsManager.current.onOpen(() => {
       setStatusMessage(`Connected with ID: ${id}`);
       console.log(`WebSocket connected with ID: ${id}`);
-    };
+    });
 
-    ws.current.onmessage = (event) => wsMessageHandlerRef.current(event);
+    wsManager.current.onMessage((event) => wsMessageHandlerRef.current(event));
 
-    ws.current.onclose = (event) => {
+    wsManager.current.onClose((event) => {
       setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
-    };
+    });
 
-    ws.current.onerror = (error) => {
+    wsManager.current.onError((error) => {
       setStatusMessage(`WebSocket Error with ID: ${id}. See console for details.`);
       console.error(`WebSocket Error with ID: ${id}:`, error);
-    };
+    });
+
+    wsManager.current.connect();
 
     return () => {
-      ws.current?.close();
+      wsManager.current?.close();
     };
   }, []);
 
@@ -193,12 +222,18 @@ function App() {
           Press Ctrl+Shift+J (Windows/Linux) or Cmd+Option+J (Mac) to see message.
         </p>
       </div>
+
       <CodeEditor
         code={editorCode}
         setCode={setEditorCode}
         submitCode={handleCodeSubmit}
         resetCode={resetCode}
         isLoading={isApplyingCode}
+      />
+      <div className="mt-4"></div>
+      <WebSocketConfigComponent
+          config={wsConfig}
+          onConfigChange={handleConfigChange}
       />
       <footer className="mt-8 text-sm text-gray-500">
         <p className='text-gray-800'>If you have any issues, please report them on <a href="https://github.com/timzaak/notir/issues?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">GitHub Issue</a>.</p>
