@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { WebSocketConfig } from '../utils/WebSocketManager';
 
 interface WebSocketConfigProps {
@@ -10,7 +10,25 @@ const WebSocketConfigComponent: React.FC<WebSocketConfigProps> = ({
   config,
   onConfigChange,
 }) => {
+  const [showNotification, setShowNotification] = useState(false);
+
   const handleConfigChange = (field: keyof WebSocketConfig, value: boolean | number) => {
+    if (field === 'enableReconnect') {
+      const savedConfig = localStorage.getItem('wsConfig');
+      if (savedConfig) {
+        try {
+          const parsedConfig = JSON.parse(savedConfig);
+          if (parsedConfig.enableReconnect !== value) {
+            setShowNotification(true);
+          } else {
+            setShowNotification(false);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     onConfigChange({
       ...config,
       [field]: value
@@ -21,6 +39,13 @@ const WebSocketConfigComponent: React.FC<WebSocketConfigProps> = ({
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-5">
       <h3 className="text-lg font-semibold mb-3 text-gray-800">WebSocket Config</h3>
       
+      {showNotification && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+          <p className="font-bold">Info</p>
+          <p>You must refresh the page for the auto connect change to take effect.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         <div className="flex flex-col space-y-1 items-center">
