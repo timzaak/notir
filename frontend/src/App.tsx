@@ -87,7 +87,6 @@ function App() {
   // 处理WebSocket配置变更
   const handleConfigChange = useCallback((newConfig: WebSocketConfig) => {
     setWsConfig(newConfig);
-    wsManager.current?.setConfig(newConfig);
     localStorage.setItem('wsConfig', JSON.stringify(newConfig));
   }, []);
 

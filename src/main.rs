@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::{HashMap, VecDeque};
 use std::sync::LazyLock;
 
@@ -53,7 +52,7 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 
     let (tx, rx) = mpsc::unbounded_channel();
     let rx = UnboundedReceiverStream::new(rx);
-    let fut = rx.forward(user_ws_tx).map(|result| {
+    let fut = rx.forward(user_ws_tx).map(|_result| {
         // if let Err(e) = result {
         //    tracing::error!(error = e, "websocket send error");
         // }
