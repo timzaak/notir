@@ -50,14 +50,14 @@ curl -X POST http://127.0.0.1:5800/pub?id=test \
     *   Establishes a WebSocket connection for a user to subscribe to messages.
     *   Query Parameters:
         *   `id` (required): A unique string identifier for the client. Cannot be empty.
-        *   `mode` (optional): The mode of subscription. Can be `shot` or `ping_pong`. Defaults to `shot`, when use `ping_pong`, Subscriber(Websocket) can send message back to Publisher(http request as response).
+        *   `mode` (optional): The mode of subscription. Can be `shot` or `ping_pong`, Defaults to `shot`. When use `ping_pong`, Subscriber(Websocket) can send message back to Publisher(the message would be response) in 5 seconds.
     *   Upgrades the connection to WebSocket. Messages from other users will be pushed to this WebSocket connection.
 *   `POST /pub?id=<user_id>`:
     *   Publishes a message from a client to all *other* connected clients.
     *   Query Parameters:
         *   `id` (required): The unique string identifier of the sending client. Cannot be empty.
     *   Request Body: The message content.
-        *   If the `Content-Type` header is `application/json` or starts with `text/` (e.g., `text/plain`), the message is treated as a UTF-8 text message.
+        *   If the `Content-Type` header is `application/json` or starts with `text/` (e.g., `text/plain`), the message is treated as a `UTF-8` text message.
         *   Otherwise, the message is treated as binary.
     *   Responses:
         *   `200 OK`: If the message was successfully sent to the target user's channel.
