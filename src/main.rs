@@ -19,6 +19,9 @@ use tokio::sync::{RwLock, mpsc, oneshot};
 use tokio::time::{Duration, interval, timeout};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(rename_all = "snake_case")]
 enum Mode {
@@ -68,7 +71,7 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 
         loop {
             ping_interval.tick().await;
-            if let Err(_) = tx_clone_for_ping.send(Ok(Message::ping(vec![]))) {
+            if tx_clone_for_ping.send(Ok(Message::ping(vec![]))).is_err() {
                 tracing::debug!(
                     "Failed to send ping to user {my_id_clone_for_ping}, connection likely closed"
                 );
