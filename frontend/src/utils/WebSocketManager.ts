@@ -2,6 +2,7 @@ export interface WebSocketConfig {
   enableReconnect: boolean;
   reconnectInterval: number; // in milliseconds
   maxReconnectAttempts: number;
+  mode: 'single' | 'broad'; // WebSocket connection mode
 }
 
 export class WebSocketManager {

@@ -12,7 +12,7 @@ const WebSocketConfigComponent: React.FC<WebSocketConfigProps> = ({
 }) => {
   const [showNotification, setShowNotification] = useState(false);
 
-  const handleConfigChange = (field: keyof WebSocketConfig, value: boolean | number) => {
+  const handleConfigChange = (field: keyof WebSocketConfig, value: boolean | number | string) => {
     if (field === 'enableReconnect') {
       const savedConfig = localStorage.getItem('wsConfig');
       if (savedConfig) {
@@ -38,20 +38,36 @@ const WebSocketConfigComponent: React.FC<WebSocketConfigProps> = ({
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-5">
       <h3 className="text-lg font-semibold mb-3 text-gray-800">WebSocket Config</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 
-        <div className="flex flex-col space-y-1 items-center">
-          <label htmlFor="enableReconnect" className="text-sm font-medium text-gray-700">
-            auto connect
+        <div className="flex flex-col space-y-1">
+          <label htmlFor="mode" className="text-sm font-medium text-gray-700">
+            Mode
           </label>
-          <input
-            type="checkbox"
-            id="enableReconnect"
-            checked={config.enableReconnect}
-            onChange={(e) => handleConfigChange('enableReconnect', e.target.checked)}
-            className="text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50"
-          />
+          <select
+            id="mode"
+            value={config.mode}
+            onChange={(e) => handleConfigChange('mode', e.target.value as 'single' | 'broad')}
+            className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="single">Single</option>
+            <option value="broad">Broad</option>
+          </select>
+        </div>
 
+        <div className="flex flex-col space-y-1">
+          <label htmlFor="enableReconnect" className="text-sm font-medium text-gray-700">
+            Auto Connect
+          </label>
+          <div className="flex items-center justify-center h-8">
+            <input
+              type="checkbox"
+              id="enableReconnect"
+              checked={config.enableReconnect}
+              onChange={(e) => handleConfigChange('enableReconnect', e.target.checked)}
+              className="text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50"
+            />
+          </div>
         </div>
 
         <div className="flex flex-col space-y-1">

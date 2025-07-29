@@ -65,7 +65,14 @@ function App() {
     const savedConfig = localStorage.getItem('wsConfig');
     if (savedConfig) {
       try {
-        return JSON.parse(savedConfig);
+        const parsed = JSON.parse(savedConfig);
+        // Ensure mode field exists with default value
+        return {
+          enableReconnect: parsed.enableReconnect || false,
+          reconnectInterval: parsed.reconnectInterval || 5000,
+          maxReconnectAttempts: parsed.maxReconnectAttempts || 5,
+          mode: parsed.mode || 'single'
+        };
       } catch {
         console.warn('Failed to parse saved WebSocket config, using defaults');
       }
@@ -73,7 +80,8 @@ function App() {
     return {
       enableReconnect: false,
       reconnectInterval: 5000,
-      maxReconnectAttempts: 5
+      maxReconnectAttempts: 5,
+      mode: 'single'
     };
   });
 
@@ -86,9 +94,15 @@ function App() {
 
   // 处理WebSocket配置变更
   const handleConfigChange = useCallback((newConfig: WebSocketConfig) => {
+    const oldMode = wsConfig.mode;
     setWsConfig(newConfig);
     localStorage.setItem('wsConfig', JSON.stringify(newConfig));
-  }, []);
+    
+    // 如果模式改变，刷新页面
+    if (oldMode !== newConfig.mode) {
+      window.location.reload();
+    }
+  }, [wsConfig.mode]);
 
   // 编译并应用 WebSocket 消息处理器代码
   const compileAndApplyCode = useCallback(async (codeToApply: string, isInitialLoad = false) => {
@@ -170,7 +184,9 @@ function App() {
 
     wsManager.current?.close()
 
-    wsManager.current = new WebSocketManager(`/single/sub?id=${id}`, wsConfig);
+    // 根据配置的模式选择不同的 WebSocket URL
+    const wsUrl = wsConfig.mode === 'broad' ? `/broad/sub?id=${id}` : `/single/sub?id=${id}`;
+    wsManager.current = new WebSocketManager(wsUrl, wsConfig);
 
     wsManager.current.onOpen(() => {
       setStatusMessage(`Connected with ID: ${id}`);
@@ -193,7 +209,7 @@ function App() {
     return () => {
       wsManager.current?.close();
     };
-  }, []);
+  }, [wsConfig.mode]); // 添加 wsConfig.mode 作为依赖
 
   useEffect(() => {
     // const httpPrefix = import.meta.env.DEV ? `http://localhost:5800/`: `/`;

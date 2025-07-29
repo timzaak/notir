@@ -14,10 +14,14 @@ export default defineConfig({
         target: 'http://localhost:5800',
         changeOrigin: true,
       },
-      '/sub': {
+      '/single/sub': {
         target: 'http://localhost:5800',
         ws: true,
-      }
+      },
+      '/broad/sub': {
+        target: 'http://localhost:5800',
+        ws: true,
+      },
     }
   }
 })
