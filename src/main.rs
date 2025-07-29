@@ -275,8 +275,8 @@ async fn main() {
         .get(static_embed::<Assets>().fallback("index.html"));
 
     let router = Router::new()
-        .push(Router::with_path("sub").goal(user_connected))
-        .push(Router::with_path("pub").post(publish_message))
+        .push(Router::with_path("single/sub").goal(user_connected))
+        .push(Router::with_path("single/pub").post(publish_message))
         .push(Router::with_path("health").goal(health))
         .push(Router::with_path("version").goal(version))
         .push(static_files);

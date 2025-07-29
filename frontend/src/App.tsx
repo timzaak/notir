@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import CodeEditor from './components/CodeEditor';
 import WebSocketConfigComponent from './components/WebSocketConfig';
-import {type WebSocketConfig, WebSocketManager} from './utils/WebSocketManager';
+import { type WebSocketConfig, WebSocketManager } from './utils/WebSocketManager';
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer);
@@ -36,7 +36,7 @@ const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer:
   
   if (typeof data === 'string') {
     console.log(data);
-    // Attention: sendMessage only works when publish message via /pub?id=\${userId}&mod=ping_pong
+    // Attention: sendMessage only works when publish message via /single/pub?id=\${userId}&mod=ping_pong
     // sendMessage('response');
   } else if (data instanceof ArrayBuffer) {
     console.log(arrayBufferToBase64(data));
@@ -170,7 +170,7 @@ function App() {
 
     wsManager.current?.close()
 
-    wsManager.current = new WebSocketManager(`/sub?id=${id}`, wsConfig);
+    wsManager.current = new WebSocketManager(`/single/sub?id=${id}`, wsConfig);
 
     wsManager.current.onOpen(() => {
       setStatusMessage(`Connected with ID: ${id}`);
@@ -231,8 +231,8 @@ function App() {
       />
       <div className="mt-4"></div>
       <WebSocketConfigComponent
-          config={wsConfig}
-          onConfigChange={handleConfigChange}
+        config={wsConfig}
+        onConfigChange={handleConfigChange}
       />
       <footer className="mt-8 text-sm text-gray-500">
         <p className='text-gray-800'>If you have any issues, please report them on <a href="https://github.com/timzaak/notir/issues?utm_source=notir" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">GitHub Issue</a>.</p>
