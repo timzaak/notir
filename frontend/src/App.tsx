@@ -190,7 +190,6 @@ function App() {
 
     wsManager.current.onOpen(() => {
       setStatusMessage(`Connected with ID: ${id}`);
-      console.log(`WebSocket connected with ID: ${id}`);
     });
 
     wsManager.current.onMessage((event) => wsMessageHandlerRef.current(event));

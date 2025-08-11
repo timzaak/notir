@@ -65,7 +65,7 @@ export class WebSocketManager {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectAttempts++;
-      console.debug(`WebSocket reconnect attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts}`);
+      // console.debug(`WebSocket reconnect attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts}`);
       this.connect();
     }, this.config.reconnectInterval);
   }
@@ -74,7 +74,7 @@ export class WebSocketManager {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(message);
     } else {
-      console.error("WebSocket is not connected.");
+      // console.error("WebSocket is not connected.");
     }
   }
 
