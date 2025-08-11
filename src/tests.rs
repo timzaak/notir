@@ -89,10 +89,10 @@ mod test {
         let user_id_clone = user_id.clone();
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(10)).await;
-            if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&user_id_clone) {
-                if let Some((_id, tx)) = entry.pop_front() {
-                    let _ = tx.send(response_data);
-                }
+            if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&user_id_clone)
+                && let Some((_id, tx)) = entry.pop_front()
+            {
+                let _ = tx.send(response_data);
             }
         });
 

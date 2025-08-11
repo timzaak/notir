@@ -94,14 +94,13 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
                     }
 
                     let data: Bytes = msg.as_bytes().to_vec().into();
-                    if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&my_id_clone_for_task) {
-                        if let Some((_id, tx)) = entry.pop_front() {
-                            if let Err(e) = tx.send(data) {
-                                tracing::error!(
-                                    "Failed to send message to callback channel for user {my_id_clone_for_task}: {e:?}"
-                                );
-                            }
-                        }
+                    if let Some(mut entry) = CALLBACK_CHANNELS.get_mut(&my_id_clone_for_task)
+                        && let Some((_id, tx)) = entry.pop_front()
+                        && let Err(e) = tx.send(data)
+                    {
+                        tracing::error!(
+                            "Failed to send message to callback channel for user {my_id_clone_for_task}: {e:?}"
+                        );
                     }
                 }
                 Err(_e) => {
