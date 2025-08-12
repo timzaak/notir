@@ -112,7 +112,8 @@ async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
                         connection_id
                     );
                 }
-                Err(_e) => {
+                Err(e) => {
+                    tracing::warn!("WebSocket error for broadcast subscriber {} (connection_id: {}): {:?}", my_id_clone_for_task, connection_id, e);
                     break;
                 }
             };
@@ -188,8 +189,9 @@ pub async fn broadcast_publish(req: &mut Request, res: &mut Response) {
         for connection in connections.iter() {
             if connection.sender.send(Ok(msg.clone())).is_err() {
                 failed_connection_ids.push(connection.connection_id);
-                tracing::debug!(
-                    "Failed to send message to connection_id: {}",
+                tracing::warn!(
+                    "Failed to send broadcast message to user {} (connection_id: {}), connection will be removed",
+                    string_uid,
                     connection.connection_id
                 );
             }

@@ -195,7 +195,7 @@ function App() {
     wsManager.current.onMessage((event) => wsMessageHandlerRef.current(event));
 
     wsManager.current.onClose((event) => {
-      setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Reason: ${event.reason || 'N/A'}`);
+      setStatusMessage(`Disconnected. ID: ${id}. Error Code: ${event.code}, Date: ${new Date()}`);
     });
 
     wsManager.current.onError((error) => {

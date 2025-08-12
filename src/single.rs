@@ -103,7 +103,8 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
                         );
                     }
                 }
-                Err(_e) => {
+                Err(e) => {
+                    tracing::warn!("WebSocket error for user {}: {:?}", my_id_clone_for_task, e);
                     break;
                 }
             };
@@ -115,7 +116,7 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 }
 
 pub async fn user_disconnected(my_id: String) {
-    tracing::info!("good bye user: {}", my_id);
+    tracing::info!("single user disconnected: {}", my_id);
     ONLINE_USERS.write().await.remove(&my_id);
     CALLBACK_CHANNELS.remove(&my_id);
 }
@@ -164,6 +165,7 @@ pub async fn publish_message(req: &mut Request, res: &mut Response) {
                 };
 
                 if user_tx.send(Ok(msg)).is_err() {
+                    tracing::warn!("Failed to send message to user {}, removing from online users", string_uid);
                     drop(users_map);
                     ONLINE_USERS.write().await.remove(&string_uid);
                     res.status_code(StatusCode::NOT_FOUND);
@@ -202,6 +204,7 @@ pub async fn publish_message(req: &mut Request, res: &mut Response) {
                     .or_default()
                     .push_back((id.clone(), tx));
                 if user_tx.send(Ok(msg)).is_err() {
+                    tracing::warn!("Failed to send ping-pong message to user {}, removing from online users", string_uid);
                     drop(users_map);
                     ONLINE_USERS.write().await.remove(&string_uid);
                     let _ = CALLBACK_CHANNELS
