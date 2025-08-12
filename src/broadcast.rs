@@ -113,7 +113,12 @@ async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
                     );
                 }
                 Err(e) => {
-                    tracing::warn!("WebSocket error for broadcast subscriber {} (connection_id: {}): {:?}", my_id_clone_for_task, connection_id, e);
+                    tracing::warn!(
+                        "WebSocket error for broadcast subscriber {} (connection_id: {}): {:?}",
+                        my_id_clone_for_task,
+                        connection_id,
+                        e
+                    );
                     break;
                 }
             };
