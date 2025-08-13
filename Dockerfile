@@ -6,7 +6,7 @@ RUN npm install
 RUN npm run build
 
 # Rust builder stage
-FROM rust:1.87-alpine3.22 AS builder
+FROM rust:1.89-alpine3.22 AS builder
 RUN apk add --no-cache musl-dev make
 WORKDIR /app
 COPY . .

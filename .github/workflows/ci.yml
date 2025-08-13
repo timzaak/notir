@@ -17,6 +17,9 @@ jobs:
       
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.89
+        components: rustfmt, clippy
       
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -40,4 +43,3 @@ jobs:
       
     - name: Run tests
       run: cargo test
-
