@@ -1,7 +1,6 @@
 use rust_embed::RustEmbed;
 use salvo::prelude::*;
 use salvo::serve_static::static_embed;
-
 use tracing_subscriber::EnvFilter;
 
 mod broadcast;
@@ -26,8 +25,11 @@ async fn version() -> String {
 #[tokio::main]
 async fn main() {
     // Initialize logging subsystem
+    let default_filter = "info,salvo_core::server=warn";
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter)),
+        )
         .init();
 
     // Bind server to port 5800

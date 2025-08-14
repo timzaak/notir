@@ -43,7 +43,7 @@ pub async fn user_connected(req: &mut Request, res: &mut Response) -> Result<(),
 }
 
 async fn handle_socket(ws: WebSocket, my_id: String) {
-    tracing::info!("new chat user: {}", my_id);
+    tracing::info!("new single user: {}", my_id);
 
     let (user_ws_tx, mut user_ws_rx) = ws.split();
 
@@ -116,7 +116,7 @@ async fn handle_socket(ws: WebSocket, my_id: String) {
 }
 
 pub async fn user_disconnected(my_id: String) {
-    tracing::info!("single user disconnected: {}", my_id);
+    tracing::info!("subscriber disconnected: {}", my_id);
     ONLINE_USERS.write().await.remove(&my_id);
     CALLBACK_CHANNELS.remove(&my_id);
 }
@@ -166,19 +166,19 @@ pub async fn publish_message(req: &mut Request, res: &mut Response) {
 
                 if user_tx.send(Ok(msg)).is_err() {
                     tracing::warn!(
-                        "Failed to send message to user {}, removing from online users",
+                        "Failed to send message to subscriber {}, removing from online subscribers",
                         string_uid
                     );
                     drop(users_map);
                     ONLINE_USERS.write().await.remove(&string_uid);
                     res.status_code(StatusCode::NOT_FOUND);
-                    res.body("User disconnected during send");
+                    res.body("subscriber disconnected during send");
                 } else {
                     res.status_code(StatusCode::OK);
                 }
             } else {
                 res.status_code(StatusCode::NOT_FOUND);
-                res.body("User ID not found");
+                res.body("subscriber id not found");
             }
         }
         Mode::PingPong => {
@@ -208,7 +208,7 @@ pub async fn publish_message(req: &mut Request, res: &mut Response) {
                     .push_back((id.clone(), tx));
                 if user_tx.send(Ok(msg)).is_err() {
                     tracing::warn!(
-                        "Failed to send ping-pong message to user {}, removing from online users",
+                        "Failed to send ping-pong message to subscriber {}, removing from online subscribers",
                         string_uid
                     );
                     drop(users_map);
@@ -218,12 +218,12 @@ pub async fn publish_message(req: &mut Request, res: &mut Response) {
                         .or_default()
                         .pop_front();
                     res.status_code(StatusCode::NOT_FOUND);
-                    res.body("User disconnected during send");
+                    res.body("subscriber disconnected during send");
                     return;
                 }
             } else {
                 res.status_code(StatusCode::NOT_FOUND);
-                res.body("User ID not found");
+                res.body("subscriber id not found");
                 return;
             }
 

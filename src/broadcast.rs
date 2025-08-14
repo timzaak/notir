@@ -41,7 +41,7 @@ pub async fn broadcast_subscribe(req: &mut Request, res: &mut Response) -> Resul
 async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
     let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::SeqCst);
     tracing::info!(
-        "new broadcast subscriber: {} (connection_id: {})",
+        "new broadcast user: {} (connection_id: {})",
         my_id,
         connection_id
     );
