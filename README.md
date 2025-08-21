@@ -4,6 +4,8 @@
 
 `Notir` is a lightweight WebSocket server built with Rust using the Salvo web framework and Tokio. It allows users to connect via WebSockets, subscribe to a real-time message feed, and publish messages to other connected clients.
 
+Feel free to open an issue anytime, for any reason.
+
 ## Features
 
 - WebSocket communication for real-time messaging.
