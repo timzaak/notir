@@ -18,24 +18,24 @@ Feel free to open an issue anytime, for any reason.
 
 It has been deployed on the public server, you can try it out right away:
 ```
-http://notir.fornecode.com:5800?id=${uuid}
+http://notir.fornetcode.com:5800?id=${uuid}
 ```
 Please change `uuid` to whatever you want, and now you can publish
 messages to the server like this:
 
 ```bash
 # Single mode - Point-to-point messaging
-curl -X POST http://notir.fornecode.com:5800/single/pub?id=${uuid} \
+curl -X POST http://notir.fornetcode.com:5800/single/pub?id=${uuid} \
  -H 'Content-Type: application/json' \
  -d '{"msg": "hello world"}'
  
 # Single mode with PingPong - Two-way communication
-curl -X POST http://notir.fornecode.com:5800/single/pub?id=${uuid}&mode=ping_pong \
+curl -X POST http://notir.fornetcode.com:5800/single/pub?id=${uuid}&mode=ping_pong \
  -H 'Content-Type: application/json' \
  -d '{"msg": "hello world"}'
 
 # Broadcast mode - Message to all subscribers of a channel
-curl -X POST http://notir.fornecode.com:5800/broad/pub?id=${uuid} \
+curl -X POST http://notir.fornetcode.com:5800/broad/pub?id=${uuid} \
  -H 'Content-Type: application/json' \
  -d '{"msg": "broadcast message"}'
 ```
