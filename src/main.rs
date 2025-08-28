@@ -32,13 +32,11 @@ async fn main() {
         )
         .init();
 
-    // Bind server to port 5800
-    let acceptor = TcpListener::new("0.0.0.0:5800").bind().await;
     let static_files = Router::with_hoop(Compression::new().enable_gzip(CompressionLevel::Fastest))
         .path("{*path}")
         .get(static_embed::<Assets>().fallback("index.html"));
 
-    let router = Router::new()
+    let mut router = Router::new()
         .push(Router::with_path("single/sub").goal(single::user_connected))
         .push(Router::with_path("single/pub").post(single::publish_message))
         .push(Router::with_path("broad/sub").goal(broadcast::broadcast_subscribe))
@@ -47,10 +45,22 @@ async fn main() {
         .push(Router::with_path("version").goal(version))
         .push(static_files);
 
-    println!(
-        "Notir server start, binding: {:?}",
-        acceptor.local_addr().unwrap()
-    );
-
-    Server::new(acceptor).serve(router).await;
+    if let Ok(domain) = std::env::var("ACME_DOMAIN") {
+        // ACME challenge domain is configured
+        let listener = TcpListener::new("0.0.0.0:443")
+            .acme()
+            .add_domain(domain)
+            .http01_challenge(&mut router);
+        let acceptor = listener.join(TcpListener::new("0.0.0.0:80")).bind().await;
+        println!("Notir server start with ACME, binding: 0.0.0.0:443 and 0.0.0.0:80");
+        Server::new(acceptor).serve(router).await;
+    } else {
+        // Bind server to port 5800
+        let acceptor = TcpListener::new("0.0.0.0:5800").bind().await;
+        println!(
+            "Notir server start, binding: {:?}",
+            acceptor.local_addr().unwrap()
+        );
+        Server::new(acceptor).serve(router).await;
+    }
 }

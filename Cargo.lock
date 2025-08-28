@@ -77,6 +77,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "asn1-rs"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56624a96882bb8c26d61312ae18cb45868e5a9992ea73c58e45c3101e56a1e60"
+dependencies = [
+ "asn1-rs-derive",
+ "asn1-rs-impl",
+ "displaydoc",
+ "nom",
+ "num-traits",
+ "rusticata-macros",
+ "thiserror 2.0.12",
+ "time",
+]
+
+[[package]]
+name = "asn1-rs-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3109e49b1e4909e9db6515a30c633684d68cdeaa252f215214cb4fa1a5bfee2c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "asn1-rs-impl"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b18050c2cd6fe86c3a76584ef5e0baf286d038cda203eb6223df2cc413565f7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "async-stream"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -329,6 +368,20 @@ name = "data-encoding"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
+
+[[package]]
+name = "der-parser"
+version = "10.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07da5016415d5a3c4dd39b11ed26f915f52fc4e0dc197d87908bc916e51bc1a6"
+dependencies = [
+ "asn1-rs",
+ "displaydoc",
+ "nom",
+ "num-bigint",
+ "num-traits",
+ "rusticata-macros",
+]
 
 [[package]]
 name = "deranged"
@@ -1047,6 +1100,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1131,6 +1190,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
+
+[[package]]
 name = "notir"
 version = "0.1.4"
 dependencies = [
@@ -1203,6 +1272,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "oid-registry"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12f40cff3dde1b6087cc5d5f5d4d65712f34016a03ed60e9c08dcc392736b5b7"
+dependencies = [
+ "asn1-rs",
 ]
 
 [[package]]
@@ -1534,6 +1612,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcgen"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0068c5b3cab1d4e271e0bb6539c87563c43411cad90b057b15c79958fbeb41f7"
+dependencies = [
+ "pem",
+ "ring",
+ "rustls-pki-types",
+ "time",
+ "yasna",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1694,6 +1785,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
+name = "rusticata-macros"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "faf0c4a6ece9950b9abdb62b1cfcf2a68b3b67a10ba445b3bb85be2a293d0632"
+dependencies = [
+ "nom",
+]
+
+[[package]]
 name = "rustix"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1777,9 +1877,9 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "salvo"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3776bf79e7894b86367528a4a913fff93a2bc3a69eb4000a91637fa400ac9089"
+checksum = "c36bbe0f06b31767fec157ce40141e1094c66ee70080582279538758c6e429e8"
 dependencies = [
  "salvo-compression",
  "salvo-jwt-auth",
@@ -1791,9 +1891,9 @@ dependencies = [
 
 [[package]]
 name = "salvo-compression"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5645a541a3d7b0c1c9137a34ff148e793eaa4500da80fac0b05dbb9403dbe213"
+checksum = "0be7ce2566a2c17a5b9ecc743862ced6f3eef7d055fe251208fe98d3245b61d8"
 dependencies = [
  "brotli",
  "bytes",
@@ -1809,9 +1909,9 @@ dependencies = [
 
 [[package]]
 name = "salvo-jwt-auth"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2570a0ffb62b2a6ed36e9a6bec99e62f96f6cbfb1608859472ccacda8d278aa7"
+checksum = "bf8dd45e7b79096575aebefc69a99c155ed185093b598d3fc95ee093250aa608"
 dependencies = [
  "base64",
  "bytes",
@@ -1829,9 +1929,9 @@ dependencies = [
 
 [[package]]
 name = "salvo-proxy"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8071ab308914792499355d1f860bdae3a29f171b119e325a4dc9c4d8c4dbd79"
+checksum = "4f3eb6639238eee9d643bccfb8de85101d63d5d854e80f94e180e32bd8c11889"
 dependencies = [
  "fastrand",
  "futures-util",
@@ -1847,9 +1947,9 @@ dependencies = [
 
 [[package]]
 name = "salvo-serde-util"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290bc58aceb637aa530eddd0e4a01c0d0ca054ba9627ba4e009ad15c0ff68988"
+checksum = "d8695f7b61a0fbd1de4854537ad78f3b3539a8aa82878c500e88500b71f406f8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1858,9 +1958,9 @@ dependencies = [
 
 [[package]]
 name = "salvo-serve-static"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb188854adf74c313f9ecec885eae7889088f9ef73b1c89f7f99b72a7abe91a3"
+checksum = "0abab7acfca2f06b7eb54f03de9a0a526699d61ee433b5d802102c7fe8caa55b"
 dependencies = [
  "hex",
  "mime",
@@ -1878,9 +1978,9 @@ dependencies = [
 
 [[package]]
 name = "salvo_core"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e246c1580eb342847eebb7a2faf4042e26b403d36a3184f4b1670751d551fee5"
+checksum = "35d3c5a057bffcb27e77aa21d6fdcfd3fea3acb7549931366dca802f487358c6"
 dependencies = [
  "async-trait",
  "base64",
@@ -1906,7 +2006,9 @@ dependencies = [
  "percent-encoding",
  "pin-project",
  "rand 0.9.1",
+ "rcgen",
  "regex",
+ "ring",
  "rustls-pemfile",
  "salvo_macros",
  "serde",
@@ -1919,13 +2021,14 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tracing",
+ "x509-parser",
 ]
 
 [[package]]
 name = "salvo_extra"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0eeb855440594f79c8e01179bb428e44ff9272ab35e5a691febc421e3cde836"
+checksum = "5748cd3cb2be5e7ddb4bff51df0cf4116545b84dbe6f1ad3794f8322d827642e"
 dependencies = [
  "base64",
  "etag",
@@ -1945,9 +2048,9 @@ dependencies = [
 
 [[package]]
 name = "salvo_macros"
-version = "0.82.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be541bc31ec81ac1902824e5ecb9daba086b7ee8a4b3ce37c8104d01ac3b3961"
+checksum = "b52963b667b9247edcac2108bc4261f3f895b9cf4f4c6030bc33d07c465f2f2f"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3062,6 +3165,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2f10b9bb0928dfb1b42b65e1f9e36f7f54dbdf08457afefb38afcdec4fa2bb"
 
 [[package]]
+name = "x509-parser"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4569f339c0c402346d4a75a9e39cf8dad310e287eef1ff56d4c68e5067f53460"
+dependencies = [
+ "asn1-rs",
+ "data-encoding",
+ "der-parser",
+ "lazy_static",
+ "nom",
+ "oid-registry",
+ "rusticata-macros",
+ "thiserror 2.0.12",
+ "time",
+]
+
+[[package]]
 name = "xml-rs"
 version = "0.8.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3072,6 +3192,15 @@ name = "xxhash-rust"
 version = "0.8.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdd20c5420375476fbd4394763288da7eb0cc0b8c11deed431a91562af7335d3"
+
+[[package]]
+name = "yasna"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e17bb3549cc1321ae1296b9cdc2698e2b6cb1992adfa19a8c72e5b7a738f44cd"
+dependencies = [
+ "time",
+]
 
 [[package]]
 name = "yoke"
