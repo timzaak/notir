@@ -49,7 +49,11 @@ on GitHub Container Registry.
 
 ```bash
 docker run -d -p 5800:5800 --name notir ghcr.io/timzaak/notir:latest
-``````
+
+#The server will start on port 5800 by default. You can specify a different port using the `--port` or `-p` flag. 
+
+docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8698
+```
 
 ## API Endpoints
 

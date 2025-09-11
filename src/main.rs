@@ -1,3 +1,4 @@
+use clap::Parser;
 use rust_embed::RustEmbed;
 use salvo::prelude::*;
 use salvo::serve_static::static_embed;
@@ -13,6 +14,15 @@ mod tests;
 #[folder = "static"]
 struct Assets;
 
+/// A lightweight WebSocket server for real-time messaging.
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// The port to listen on.
+    #[arg(short, long, default_value_t = 5800)]
+    port: u16,
+}
+
 #[handler]
 async fn health(res: &mut Response) {
     res.status_code(StatusCode::OK);
@@ -24,6 +34,7 @@ async fn version() -> String {
 }
 #[tokio::main]
 async fn main() {
+    let cli = Cli::parse();
     // Initialize logging subsystem
     let default_filter = "info,salvo_core::server=warn";
     tracing_subscriber::fmt()
@@ -33,7 +44,9 @@ async fn main() {
         .init();
 
     // Bind server to port 5800
-    let acceptor = TcpListener::new("0.0.0.0:5800").bind().await;
+    let acceptor = TcpListener::new(format!("0.0.0.0:{}", cli.port))
+        .bind()
+        .await;
     let static_files = Router::with_hoop(Compression::new().enable_gzip(CompressionLevel::Fastest))
         .path("{*path}")
         .get(static_embed::<Assets>().fallback("index.html"));
