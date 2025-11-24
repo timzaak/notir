@@ -122,6 +122,7 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
 - `GET /health`: Health check endpoint, returns `200 OK` if the service is
   running.
 - `GET /version`: Returns the current version of the service.
+- `GET /connections?id=<user_id>`: Returns the number of active WebSocket connections for a given user ID.
 
 ## License
 

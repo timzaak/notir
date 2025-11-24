@@ -19,25 +19,22 @@ mod test {
         let (tx, mut rx) = mpsc::unbounded_channel();
 
         // 模拟用户连接
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.insert(user_id.clone(), tx);
-        }
+        let conn_id = "test_conn".to_string();
+        ONLINE_USERS
+            .entry(user_id.clone())
+            .or_default()
+            .insert(conn_id.clone(), tx);
 
         // 验证用户已连接
-        {
-            let users = ONLINE_USERS.read().await;
-            assert!(users.contains_key(&user_id), "用户应该已连接");
-        }
+        assert!(ONLINE_USERS.contains_key(&user_id), "用户应该已连接");
 
         // 模拟发送消息到用户
         let test_message = "Hello from single shot test";
+        if let Some(user_conns) = ONLINE_USERS.get(&user_id)
+            && let Some(conn) = user_conns.get(&conn_id)
         {
-            let users = ONLINE_USERS.read().await;
-            if let Some(user_tx) = users.get(&user_id) {
-                let msg = salvo::websocket::Message::text(test_message);
-                assert!(user_tx.send(Ok(msg)).is_ok(), "消息发送应该成功");
-            }
+            let msg = salvo::websocket::Message::text(test_message);
+            assert!(conn.send(Ok(msg)).is_ok(), "消息发送应该成功");
         }
 
         // 验证消息接收
@@ -45,10 +42,7 @@ mod test {
         assert!(received.is_ok(), "应该接收到消息");
 
         // 清理
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.remove(&user_id);
-        }
+        ONLINE_USERS.remove(&user_id);
     }
 
     #[tokio::test]
@@ -63,10 +57,11 @@ mod test {
         let (tx, _rx) = mpsc::unbounded_channel();
 
         // 模拟用户连接
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.insert(user_id.clone(), tx);
-        }
+        let conn_id = "test_conn".to_string();
+        ONLINE_USERS
+            .entry(user_id.clone())
+            .or_default()
+            .insert(conn_id.clone(), tx);
 
         // 创建回调通道
         let (callback_tx, callback_rx) = tokio::sync::oneshot::channel();
@@ -108,10 +103,7 @@ mod test {
         );
 
         // 清理
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.remove(&user_id);
-        }
+        ONLINE_USERS.remove(&user_id);
         CALLBACK_CHANNELS.remove(&user_id);
     }
 
@@ -121,16 +113,13 @@ mod test {
         let non_existent_user = "non_existent_user".to_string();
 
         // 确保用户不存在
-        {
-            let users = ONLINE_USERS.read().await;
-            assert!(!users.contains_key(&non_existent_user), "用户不应该存在");
-        }
+        assert!(
+            !ONLINE_USERS.contains_key(&non_existent_user),
+            "用户不应该存在"
+        );
 
         // 模拟查找不存在的用户
-        let user_found = {
-            let users = ONLINE_USERS.read().await;
-            users.get(&non_existent_user).is_some()
-        };
+        let user_found = ONLINE_USERS.get(&non_existent_user).is_some();
 
         assert!(!user_found, "不存在的用户查找应该返回false");
     }
@@ -142,10 +131,11 @@ mod test {
         let (tx, _rx) = mpsc::unbounded_channel();
 
         // 模拟用户连接
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.insert(user_id.clone(), tx);
-        }
+        let conn_id = "test_conn".to_string();
+        ONLINE_USERS
+            .entry(user_id.clone())
+            .or_default()
+            .insert(conn_id.clone(), tx);
 
         // 创建回调通道但不回复
         let (callback_tx, callback_rx) = tokio::sync::oneshot::channel::<Bytes>();
@@ -168,10 +158,7 @@ mod test {
         }
 
         // 清理
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.remove(&user_id);
-        }
+        ONLINE_USERS.remove(&user_id);
         CALLBACK_CHANNELS.remove(&user_id);
     }
 
@@ -196,10 +183,11 @@ mod test {
         let (tx, _rx) = mpsc::unbounded_channel();
 
         // 模拟用户连接
-        {
-            let mut users = ONLINE_USERS.write().await;
-            users.insert(user_id.clone(), tx);
-        }
+        let conn_id = "test_conn".to_string();
+        ONLINE_USERS
+            .entry(user_id.clone())
+            .or_default()
+            .insert(conn_id.clone(), tx);
 
         // 添加一些回调通道
         {
@@ -209,20 +197,14 @@ mod test {
         }
 
         // 验证用户和回调通道存在
-        {
-            let users = ONLINE_USERS.read().await;
-            assert!(users.contains_key(&user_id), "用户应该存在");
-        }
+        assert!(ONLINE_USERS.contains_key(&user_id), "用户应该存在");
         assert!(CALLBACK_CHANNELS.contains_key(&user_id), "回调通道应该存在");
 
         // 模拟用户断开连接
-        user_disconnected(user_id.clone()).await;
+        user_disconnected(user_id.clone(), conn_id).await;
 
         // 验证清理完成
-        {
-            let users = ONLINE_USERS.read().await;
-            assert!(!users.contains_key(&user_id), "用户应该被移除");
-        }
+        assert!(!ONLINE_USERS.contains_key(&user_id), "用户应该被移除");
         assert!(
             !CALLBACK_CHANNELS.contains_key(&user_id),
             "回调通道应该被移除"

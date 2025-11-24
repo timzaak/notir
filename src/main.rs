@@ -53,6 +53,7 @@ async fn main() {
 
     let router = Router::new()
         .push(Router::with_path("single/sub").goal(single::user_connected))
+        .push(Router::with_path("connections").goal(single::connections))
         .push(Router::with_path("single/pub").post(single::publish_message))
         .push(Router::with_path("broad/sub").goal(broadcast::broadcast_subscribe))
         .push(Router::with_path("broad/pub").post(broadcast::broadcast_publish))
