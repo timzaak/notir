@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 futures-util = "0.3"
 rust-embed = ">= 6, <= 9"
-salvo = { version = "0.83", features = ["websocket", "serve-static", "compression"] }
+salvo = { version = "0.84.2", features = ["websocket", "serve-static", "compression"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -21,5 +21,4 @@ clap = { version = "4.5.47", features = ["derive"] }
 tokio-test = "0.4"
 serde_json = "1.0"
 reqwest = { version = "0.12", features = ["json"] }
-tokio-tungstenite = "0.27"
 url = "2.5"
