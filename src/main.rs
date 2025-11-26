@@ -1,7 +1,9 @@
+use crate::single::ONLINE_USERS;
 use clap::Parser;
 use rust_embed::RustEmbed;
 use salvo::prelude::*;
 use salvo::serve_static::static_embed;
+use serde::Serialize;
 use tracing_subscriber::EnvFilter;
 
 mod broadcast;
@@ -32,6 +34,26 @@ async fn health(res: &mut Response) {
 async fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
+
+#[derive(Serialize)]
+struct ConnectionCount {
+    count: usize,
+}
+
+#[handler]
+pub async fn connections(req: &mut Request, res: &mut Response) {
+    let string_uid = req.query::<String>("id").unwrap_or_default();
+    if string_uid.is_empty() {
+        res.status_code(StatusCode::BAD_REQUEST);
+        return;
+    }
+    let count = ONLINE_USERS
+        .get(&string_uid)
+        .map(|conns| conns.len())
+        .unwrap_or(0);
+    res.render(Json(ConnectionCount { count }));
+}
+
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
@@ -53,10 +75,10 @@ async fn main() {
 
     let router = Router::new()
         .push(Router::with_path("single/sub").goal(single::user_connected))
-        .push(Router::with_path("connections").goal(single::connections))
         .push(Router::with_path("single/pub").post(single::publish_message))
         .push(Router::with_path("broad/sub").goal(broadcast::broadcast_subscribe))
         .push(Router::with_path("broad/pub").post(broadcast::broadcast_publish))
+        .push(Router::with_path("connections").goal(connections))
         .push(Router::with_path("health").goal(health))
         .push(Router::with_path("version").goal(version))
         .push(static_files);

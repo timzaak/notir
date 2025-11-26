@@ -8,7 +8,7 @@ use bytes::Bytes;
 use dashmap::DashMap;
 use futures_util::{FutureExt, StreamExt};
 use nanoid::nanoid;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::{Duration, interval, timeout};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -26,25 +26,6 @@ type CallbackChannels = DashMap<String, VecDeque<(String, oneshot::Sender<Bytes>
 
 pub static ONLINE_USERS: LazyLock<Users> = LazyLock::new(Users::default);
 pub static CALLBACK_CHANNELS: LazyLock<CallbackChannels> = LazyLock::new(CallbackChannels::default);
-
-#[derive(Serialize)]
-struct ConnectionCount {
-    count: usize,
-}
-
-#[handler]
-pub async fn connections(req: &mut Request, res: &mut Response) {
-    let string_uid = req.query::<String>("id").unwrap_or_default();
-    if string_uid.is_empty() {
-        res.status_code(StatusCode::BAD_REQUEST);
-        return;
-    }
-    let count = ONLINE_USERS
-        .get(&string_uid)
-        .map(|conns| conns.len())
-        .unwrap_or(0);
-    res.render(Json(ConnectionCount { count }));
-}
 
 #[handler]
 pub async fn user_connected(req: &mut Request, res: &mut Response) -> Result<(), StatusError> {
