@@ -2,6 +2,7 @@ FROM rust:1.89-alpine3.22 AS builder
 RUN apk add --no-cache musl-dev make
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
+COPY crates/server/ crates/server/
 COPY crates/cli/ crates/cli/
 RUN cargo build --release -p notir-cli
 
