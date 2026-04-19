@@ -14,13 +14,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: 1.89
         components: rustfmt, clippy
-      
+
     - name: Cache cargo registry
       uses: actions/cache@v4
       with:
@@ -31,15 +31,15 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
-          
+
     - name: Check formatting
       run: cargo fmt --all -- --check
-      
+
     - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
-      
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
     - name: Build
-      run: cargo build
-      
+      run: cargo build --workspace
+
     - name: Run tests
-      run: cargo test
+      run: cargo test --workspace

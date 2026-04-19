@@ -1,21 +1,16 @@
-[package]
-name = "notir"
+[workspace]
+resolver = "3"
+members = ["crates/server", "crates/cli"]
+
+[workspace.package]
 version = "0.1.7"
 edition = "2024"
 
-[dependencies]
-futures-util = "0.3"
-rust-embed = ">= 6, <= 9"
-salvo = { version = "0.84.2", features = ["websocket", "serve-static", "compression"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+[workspace.dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-serde = { version = "1.0", features = ["derive"] }
-tokio-stream = { version = "0.1", features = ["net"] }
-dashmap = "6.1"
-bytes = "1.10"
-nanoid = "0.4"
-clap = { version = "4.5.47", features = ["derive"] }
-
-[dev-dependencies]
-serde_json = "1.0"
+futures-util = "0.3"

@@ -13,7 +13,7 @@ mod single;
 mod tests;
 
 #[derive(RustEmbed)]
-#[folder = "static"]
+#[folder = "../../static"]
 struct Assets;
 
 /// A lightweight WebSocket server for real-time messaging.

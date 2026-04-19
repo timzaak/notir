@@ -124,6 +124,45 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
 - `GET /version`: Returns the current version of the service.
 - `GET /connections?id=<user_id>`: Returns the number of active WebSocket connections for a given user ID.
 
+## CLI Client
+
+`notir-cli` connects to a Notir server, optionally transforms messages via a JS script, and outputs to console or file. Download from [Releases](https://github.com/timzaak/notir/releases) or use Docker:
+
+```bash
+docker run --rm ghcr.io/timzaak/notir-cli:latest --id myuser --server ws://your-server:5800
+```
+
+### Usage
+
+```bash
+# Subscribe and print raw messages
+notir-cli --id myuser --server ws://localhost:5800
+
+# Broadcast mode
+notir-cli --id channel1 --mode broad
+
+# Transform with JS script, output to file, auto-reconnect
+notir-cli --id myuser --script transform.js --output file --output-dir ./data --reconnect
+
+# Pipe to other tools
+notir-cli --id myuser | jq .
+```
+
+### JS Transform
+
+Write a `transform(event)` function. Return a string to output, `null` to discard.
+
+```javascript
+// transform.js — reformat and filter
+function transform(event) {
+  var data = JSON.parse(event.text);
+  if (data.level !== "alert") return null; // discard non-alerts
+  return JSON.stringify({ time: event.timestamp, msg: data });
+}
+```
+
+`event` fields: `text` (string|null), `binary` (hex|null), `timestamp` (ISO 8601), `type` ("text"|"binary"), `source` ("single"|"broad").
+
 ## License
 
 This project is dual-licensed under either:

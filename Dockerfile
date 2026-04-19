@@ -9,9 +9,11 @@ RUN npm run build
 FROM rust:1.89-alpine3.22 AS builder
 RUN apk add --no-cache musl-dev make
 WORKDIR /app
-COPY . .
+COPY Cargo.toml Cargo.lock ./
+COPY crates/server/ crates/server/
+COPY crates/cli/ crates/cli/
 COPY --from=frontend_builder /app/frontend/dist ./static
-RUN cargo build --release
+RUN cargo build --release -p notir
 
 # Final image
 FROM alpine:3.22

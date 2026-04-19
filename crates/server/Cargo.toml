@@ -1,0 +1,21 @@
+[package]
+name = "notir"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+futures-util = { workspace = true }
+rust-embed = ">= 6, <= 9"
+salvo = { version = "0.84.2", features = ["websocket", "serve-static", "compression"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+tokio-stream = { version = "0.1", features = ["net"] }
+dashmap = "6.1"
+bytes = "1.10"
+nanoid = "0.4"
+clap = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
