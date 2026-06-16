@@ -2,16 +2,16 @@
 
 [![Release](https://img.shields.io/github/v/release/timzaak/notir)](https://github.com/timzaak/notir/pkgs/container/notir)
 
-`Notir` is a lightweight shared clipboard and WebSocket server built with Rust using the Salvo web framework and Tokio. Open the same clipboard ID on two devices, paste text on one page, and the other online page updates in real time.
+`Notir` is a lightweight WebSocket server built with Rust using the Salvo web framework and Tokio. It allows users to connect via WebSockets, subscribe to a real-time message feed, and publish messages to other connected clients.
 
 Feel free to open an issue anytime, for any reason.
 
 ## Features
 
-- Shared clipboard page for real-time text handoff across devices.
 - WebSocket communication for real-time messaging.
 - Simple publish/subscribe model.
-- Custom WebSocket message handler page for advanced message processing.
+- Browser page for custom WebSocket message handling.
+- Small shared clipboard web app built on top of broadcast mode.
 - Containerized with Docker for easy deployment.
 
 ## Getting Started
@@ -20,18 +20,11 @@ Feel free to open an issue anytime, for any reason.
 
 It has been deployed on the public server, you can try it out right away:
 ```
-https://notir.fornetcode.com?id=${uuid}
-```
-Open the same URL on another computer or browser. Text pasted or edited on one
-page is broadcast to other currently online pages with the same `uuid`.
-
-The custom message handler page is still available at:
-
-```
 https://notir.fornetcode.com/handler?id=${uuid}
 ```
 
-You can also publish messages to connected clients with the HTTP API:
+Please change `uuid` to whatever you want, and now you can publish messages to
+the server like this:
 
 ```bash
 # Single mode - Point-to-point messaging
@@ -44,10 +37,10 @@ curl -X POST https://notir.fornetcode.com/single/pub?id=${uuid}&mode=ping_pong \
  -H 'Content-Type: application/json' \
  -d '{"msg": "hello world"}'
 
-# Broadcast mode - Message to all subscribers of a channel, including clipboard pages
+# Broadcast mode - Message to all subscribers of a channel
 curl -X POST https://notir.fornetcode.com/broad/pub?id=${uuid} \
- -H 'Content-Type: text/plain' \
- -d 'clipboard text'
+ -H 'Content-Type: application/json' \
+ -d '{"msg": "broadcast message"}'
 ```
 
 <img src="/doc/img.png" alt="Usage screenshot" style="width: 100%" />
@@ -67,10 +60,10 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
 
 ## Web UI
 
-- `/?id=<clipboard_id>`: Main shared clipboard page. Multiple online pages with
-  the same ID receive each other's latest text edits in real time.
 - `/handler?id=<user_id>`: Custom WebSocket message handler page for subscribing
   to raw messages and processing them with browser-side JavaScript.
+- `/?id=<clipboard_id>`: Shared clipboard mini app. Multiple online pages with
+  the same ID receive each other's latest text edits in real time.
 
 ## API Endpoints
 
