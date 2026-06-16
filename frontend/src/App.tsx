@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import ClipboardPage from './components/ClipboardPage';
 import CodeEditor from './components/CodeEditor';
 import WebSocketConfigComponent from './components/WebSocketConfig';
 import { type WebSocketConfig, WebSocketManager } from './utils/WebSocketManager';
@@ -52,7 +53,7 @@ const defaultEditorCode = `// event: MessageEvent, arrayBufferToBase64: (buffer:
 }
 `;
 
-function App() {
+function HandlerPage() {
   const [statusMessage, setStatusMessage] = useState('Checking for ID in URL...');
   const [editorCode, setEditorCode] = useState(() =>
     localStorage.getItem('wsMessageHandlerCode') || defaultEditorCode
@@ -208,7 +209,7 @@ function App() {
     return () => {
       wsManager.current?.close();
     };
-  }, [wsConfig.mode]); // 添加 wsConfig.mode 作为依赖
+  }, [wsConfig]);
 
   useEffect(() => {
     // const httpPrefix = import.meta.env.DEV ? `http://localhost:5800/`: `/`;
@@ -230,6 +231,11 @@ function App() {
   return (
     <div className="container mx-auto px-4 py-8 text-center">
       <h1 className="text-5xl font-bold mb-5">NOTIR</h1>
+      <div className="mb-4 text-left">
+        <a href="/" className="text-sm text-gray-600 underline hover:text-gray-900">
+          Open shared clipboard
+        </a>
+      </div>
       <div id="status" className={statusMessageClasses.trim()}>{statusMessage}</div>
       <div id="devtools-shortcut" className="mt-4 text-left">
         <p className="text-sm text-gray-600">
@@ -266,6 +272,26 @@ function App() {
           )}
         </p>
       </footer>
+    </div>
+  );
+}
+
+function App() {
+  if (window.location.pathname === '/handler') {
+    return <HandlerPage />;
+  }
+
+  if (window.location.pathname === '/') {
+    return <ClipboardPage />;
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold text-gray-950">Page Not Found</h1>
+      <p className="mt-3 text-sm text-gray-600">The shared clipboard is available from the main page.</p>
+      <a href="/" className="mt-4 inline-block text-sm text-gray-600 underline hover:text-gray-900">
+        Open shared clipboard
+      </a>
     </div>
   );
 }

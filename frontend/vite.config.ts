@@ -22,6 +22,10 @@ export default defineConfig({
         target: 'http://localhost:5800',
         ws: true,
       },
+      '/broad/pub': {
+        target: 'http://localhost:5800',
+        changeOrigin: true,
+      },
     }
   }
 })
