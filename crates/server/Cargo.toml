@@ -16,6 +16,7 @@ dashmap = "6.2"
 bytes = "1.11"
 nanoid = "0.5"
 clap = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

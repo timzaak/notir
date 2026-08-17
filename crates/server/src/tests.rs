@@ -1,11 +1,49 @@
 #[cfg(test)]
 mod test {
     use crate::broadcast::{BROADCAST_USERS, Connection};
+    use crate::files::{
+        self, ACTIVE_TRANSFERS, FILE_OFFERS, TransferEvent, handle_client_op, holder_disconnected,
+        route_chunk, try_start_transfer,
+    };
     use crate::single::{CALLBACK_CHANNELS, Mode, ONLINE_USERS, user_disconnected};
     use bytes::Bytes;
     use std::time::Duration;
     use tokio::sync::mpsc;
     use tokio::time::timeout;
+
+    /// 注册一个假广播连接，返回其消息接收端（用于观察控制消息）
+    async fn register_test_connection(
+        room_id: &str,
+        conn_id: u64,
+    ) -> mpsc::UnboundedReceiver<Result<salvo::websocket::Message, salvo::Error>> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let mut users_map = BROADCAST_USERS.write().await;
+        users_map
+            .entry(room_id.to_string())
+            .or_default()
+            .push(Connection {
+                connection_id: conn_id,
+                sender: tx,
+            });
+        rx
+    }
+
+    async fn cleanup_room(room_id: &str) {
+        FILE_OFFERS.retain(|_, offer| offer.room_id != room_id);
+        BROADCAST_USERS.write().await.remove(room_id);
+    }
+
+    async fn next_control(
+        rx: &mut mpsc::UnboundedReceiver<Result<salvo::websocket::Message, salvo::Error>>,
+    ) -> serde_json::Value {
+        let msg = timeout(Duration::from_secs(1), rx.recv())
+            .await
+            .expect("应该收到控制消息")
+            .expect("通道不应关闭")
+            .expect("消息不应出错");
+        assert!(msg.is_binary(), "控制消息应为二进制帧");
+        serde_json::from_slice(msg.as_bytes()).expect("控制消息应为合法 JSON")
+    }
 
     #[tokio::test]
     async fn test_single_shot_mode() {
@@ -851,5 +889,191 @@ mod test {
             users_map.remove(&user1_id);
             users_map.remove(&user2_id);
         }
+    }
+
+    // ========== File transfer 模块测试 ==========
+
+    #[tokio::test]
+    async fn test_file_offer_registers_and_replies() {
+        let room = "ft_room_offer";
+        let conn = 9101u64;
+        let mut rx = register_test_connection(room, conn).await;
+
+        handle_client_op(
+            room,
+            conn,
+            r#"{"op":"offer","name":"a.png","size":123,"mime":"image/png","offerId":"o1"}"#,
+        )
+        .await;
+
+        // offer 已登记
+        let offers: Vec<(String, String, u64)> = FILE_OFFERS
+            .iter()
+            .filter(|entry| entry.value().conn_id == conn)
+            .map(|entry| {
+                (
+                    entry.key().clone(),
+                    entry.value().name.clone(),
+                    entry.value().size,
+                )
+            })
+            .collect();
+        assert_eq!(offers.len(), 1, "应该注册了一个 offer");
+        assert_eq!(offers[0].1, "a.png");
+        assert_eq!(offers[0].2, 123);
+
+        // offer_ok 控制消息（binary JSON）送达连接
+        let ctrl = next_control(&mut rx).await;
+        assert_eq!(ctrl["op"], "offer_ok");
+        assert_eq!(ctrl["fileId"], offers[0].0);
+        assert_eq!(ctrl["offerId"], "o1");
+
+        cleanup_room(room).await;
+    }
+
+    #[tokio::test]
+    async fn test_non_file_text_ignored() {
+        let room = "ft_room_ignore";
+        let conn = 9102u64;
+        let mut rx = register_test_connection(room, conn).await;
+
+        // 普通剪贴板文本不应注册 offer，也不应回控制消息
+        handle_client_op(room, conn, "hello clipboard").await;
+        handle_client_op(room, conn, "{\"op\":\"bogus\"}").await;
+
+        assert!(
+            FILE_OFFERS
+                .iter()
+                .all(|entry| entry.value().conn_id != conn),
+            "不应注册任何 offer"
+        );
+        assert!(
+            timeout(Duration::from_millis(100), rx.recv())
+                .await
+                .is_err(),
+            "不应收到任何控制消息"
+        );
+
+        cleanup_room(room).await;
+    }
+
+    #[tokio::test]
+    async fn test_chunk_routing_and_done() {
+        let conn = 9103u64;
+        let mut rx = try_start_transfer(conn).expect("传输槽应为空闲");
+
+        route_chunk(conn, Bytes::from_static(b"abc")).await;
+        route_chunk(conn, Bytes::from_static(b"def")).await;
+        handle_client_op("ft_room_chunk", conn, r#"{"op":"done"}"#).await;
+
+        match timeout(Duration::from_secs(1), rx.recv()).await {
+            Ok(Some(TransferEvent::Chunk(bytes))) => assert_eq!(bytes, Bytes::from_static(b"abc")),
+            other => panic!("第一个分块异常: {other:?}"),
+        }
+        match timeout(Duration::from_secs(1), rx.recv()).await {
+            Ok(Some(TransferEvent::Chunk(bytes))) => assert_eq!(bytes, Bytes::from_static(b"def")),
+            other => panic!("第二个分块异常: {other:?}"),
+        }
+        match timeout(Duration::from_secs(1), rx.recv()).await {
+            Ok(Some(TransferEvent::Done)) => {}
+            other => panic!("应收到 Done 事件: {other:?}"),
+        }
+        assert!(
+            !ACTIVE_TRANSFERS.contains_key(&conn),
+            "done 后传输槽应被释放"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_transfer_slot_exclusivity() {
+        let conn = 9104u64;
+        let _rx = try_start_transfer(conn).expect("第一次占用应成功");
+        assert!(try_start_transfer(conn).is_none(), "同连接第二次占用应失败");
+        ACTIVE_TRANSFERS.remove(&conn);
+        assert!(try_start_transfer(conn).is_some(), "释放后应可再次占用");
+        ACTIVE_TRANSFERS.remove(&conn);
+    }
+
+    #[tokio::test]
+    async fn test_holder_disconnected_cleans_up() {
+        let room = "ft_room_disc";
+        let conn = 9105u64;
+        let mut rx = register_test_connection(room, conn).await;
+
+        handle_client_op(room, conn, r#"{"op":"offer","name":"x.bin","size":10}"#).await;
+        let _ = next_control(&mut rx).await; // 消费 offer_ok
+
+        let mut transfer_rx = try_start_transfer(conn).expect("传输槽应为空闲");
+
+        holder_disconnected(room, conn).await;
+
+        assert!(
+            FILE_OFFERS
+                .iter()
+                .all(|entry| entry.value().conn_id != conn),
+            "断开后 offer 应被清除"
+        );
+        match timeout(Duration::from_secs(1), transfer_rx.recv()).await {
+            Ok(Some(TransferEvent::Aborted)) => {}
+            other => panic!("断开后应收到 Aborted 事件: {other:?}"),
+        }
+
+        cleanup_room(room).await;
+    }
+
+    #[tokio::test]
+    async fn test_offer_count_cap() {
+        let room = "ft_room_cap";
+        let conn = 9106u64;
+        let mut rx = register_test_connection(room, conn).await;
+
+        for i in 0..32 {
+            handle_client_op(
+                room,
+                conn,
+                &format!(r#"{{"op":"offer","name":"f{i}.bin","size":1}}"#),
+            )
+            .await;
+        }
+        let count = FILE_OFFERS
+            .iter()
+            .filter(|entry| entry.value().conn_id == conn)
+            .count();
+        assert_eq!(count, 32, "应恰好注册 32 个 offer");
+
+        // 第 33 个应被拒绝并返回 error 控制消息
+        handle_client_op(
+            room,
+            conn,
+            r#"{"op":"offer","name":"overflow.bin","size":1}"#,
+        )
+        .await;
+        let count = FILE_OFFERS
+            .iter()
+            .filter(|entry| entry.value().conn_id == conn)
+            .count();
+        assert_eq!(count, 32, "不应注册第 33 个 offer");
+
+        // 依次消费全部控制消息，最后一条应为 error
+        let mut last_ctrl = serde_json::Value::Null;
+        let mut got_any = false;
+        while let Ok(Some(Ok(msg))) = timeout(Duration::from_millis(50), rx.recv()).await {
+            if let Ok(value) = serde_json::from_slice::<serde_json::Value>(msg.as_bytes()) {
+                last_ctrl = value;
+                got_any = true;
+            }
+        }
+        assert!(got_any, "应该收到过控制消息");
+        assert_eq!(last_ctrl["op"], "error", "最后一条控制消息应为 error");
+
+        cleanup_room(room).await;
+    }
+
+    #[test]
+    fn test_percent_encode() {
+        assert_eq!(files::percent_encode("a b.png"), "a%20b.png");
+        assert_eq!(files::percent_encode("photo~1-_.A.png"), "photo~1-_.A.png");
+        assert_eq!(files::percent_encode("文档.zip"), "%E6%96%87%E6%A1%A3.zip");
+        assert_eq!(files::percent_encode("q\"x"), "q%22x");
     }
 }

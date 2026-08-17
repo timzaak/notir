@@ -91,6 +91,10 @@ export class WebSocketManager {
     return this.ws?.readyState;
   }
 
+  get bufferedAmount(): number {
+    return this.ws?.bufferedAmount ?? 0;
+  }
+
   // Event handler setters
   onOpen(handler: () => void): void {
     this.onOpenHandler = handler;

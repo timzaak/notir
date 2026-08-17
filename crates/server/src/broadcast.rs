@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use salvo::prelude::*;
 use salvo::websocket::{Message, WebSocket, WebSocketUpgrade};
 
+use bytes::Bytes;
 use futures_util::{FutureExt, StreamExt};
 use salvo::http::Mime;
 use salvo::http::headers::ContentType;
@@ -93,7 +94,7 @@ async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
                 .push(connection);
         }
 
-        // 处理接收到的消息（忽略所有消息，只处理 pong）
+        // 处理接收到的消息：text 为文件操作指令，binary 为文件分块，其余忽略
         while let Some(result) = user_ws_rx.next().await {
             match result {
                 Ok(msg) => {
@@ -105,12 +106,22 @@ async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
                         );
                         continue;
                     }
-                    // 忽略其他所有消息
-                    tracing::debug!(
-                        "Ignoring message from broadcast subscriber: {} (connection_id: {})",
-                        my_id_clone_for_task,
-                        connection_id
-                    );
+                    if let Ok(text) = msg.as_str() {
+                        crate::files::handle_client_op(&my_id_clone_for_task, connection_id, text)
+                            .await;
+                    } else if msg.is_binary() {
+                        crate::files::route_chunk(
+                            connection_id,
+                            Bytes::from(msg.as_bytes().to_vec()),
+                        )
+                        .await;
+                    } else {
+                        tracing::debug!(
+                            "Ignoring message from broadcast subscriber: {} (connection_id: {})",
+                            my_id_clone_for_task,
+                            connection_id
+                        );
+                    }
                 }
                 Err(e) => {
                     tracing::warn!(
@@ -124,6 +135,7 @@ async fn handle_broadcast_socket(ws: WebSocket, my_id: String) {
             };
         }
 
+        crate::files::holder_disconnected(&my_id_clone_for_task, connection_id).await;
         broadcast_user_disconnected(my_id_clone_for_task, connection_id).await;
     };
     tokio::task::spawn(fut);

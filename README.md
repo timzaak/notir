@@ -11,7 +11,8 @@ Feel free to open an issue anytime, for any reason.
 - WebSocket communication for real-time messaging.
 - Simple publish/subscribe model.
 - Browser page for custom WebSocket message handling.
-- Small shared clipboard web app built on top of broadcast mode.
+- Small shared clipboard web app built on top of broadcast mode, including
+  on-demand file transfer between online pages.
 - Containerized with Docker for easy deployment.
 
 ## Getting Started
@@ -63,7 +64,9 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
 - `/handler?id=<user_id>`: Custom WebSocket message handler page for subscribing
   to raw messages and processing them with browser-side JavaScript.
 - `/?id=<clipboard_id>`: Shared clipboard mini app. Multiple online pages with
-  the same ID receive each other's latest text edits in real time.
+  the same ID receive each other's latest text edits in real time. Pages can
+  also send files to the channel: the file stays in the sender's browser and is
+  only streamed through the server when another page downloads it.
 
 ## API Endpoints
 
@@ -109,8 +112,10 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
   - Query Parameters:
     - `id` (required): The broadcast channel identifier. Cannot be empty.
   - Multiple clients can subscribe to the same broadcast channel.
-  - Only receives messages from `broad/pub`, ignores client-sent messages
-    (except pong responses).
+  - Receives messages from `broad/pub` as text frames; binary frames pushed by
+    the server carry file transfer control messages (see below).
+  - Client-sent messages are ignored except pong responses and the file
+    transfer operations described below.
   - Supports heartbeat mechanism for connection health monitoring.
 
 - `POST /broad/pub?id=<broadcast_id>`:
@@ -126,6 +131,56 @@ docker run -d -p 8698:8698 --name notir ghcr.io/timzaak/notir:latest -- --port 8
       subscribers.
     - `400 Bad Request`: If the `id` query parameter is missing or empty, or if
       a `text/*` body contains invalid UTF-8.
+
+### File Transfer (Lazy Upload on Demand)
+
+File transfer reuses the broadcast WebSocket. The server never stores file
+bytes, only small in-memory metadata; the sender's browser holds the file and
+streams it in chunks only when someone actually downloads it.
+
+Frame conventions on `WS /broad/sub`:
+
+- Client → server text frames are JSON ops:
+  - `{"op":"offer","offerId":"...","name":"a.bin","size":123,"mime":"..."}`:
+    register file metadata, server replies with an `offer_ok` control message.
+  - `{"op":"done"}` / `{"op":"abort"}`: end the current transfer.
+- Client → server binary frames are file chunks (256 KiB each), routed to the
+  active transfer.
+- Server → client text frames remain clipboard text (from `broad/pub`);
+  server → client binary frames are JSON control messages: `offer_ok`,
+  `pull`, `cancel`.
+
+The sender announces the file to the channel itself by POSTing a JSON envelope
+(`{"type":"notir-file","fileId":...,"name":...,"size":...,"mime":...}`) to
+`/broad/pub` with a non-text `Content-Type`, so subscribers receive it as a
+binary control frame.
+
+HTTP endpoints:
+
+- `GET /files/download/{file_id}`:
+  - Asks the holder's WebSocket connection to stream the file and relays the
+    chunks directly into the HTTP response (streaming, no disk writes).
+  - Response headers: `Content-Type` (from the offer), `Content-Length`,
+    `Content-Disposition: attachment`.
+  - `404 Not Found`: unknown `file_id` (also returned after the holder
+    disconnected, because offers die with their connection).
+  - `410 Gone`: the offer exists but the holder connection is gone.
+  - `409 Conflict`: another transfer is already in progress on the same
+    holder connection; retry shortly.
+- `GET /files/status/{file_id}`:
+  - Returns `{"available": true|false}` depending on whether the offer exists
+    and the holder is still connected.
+
+Semantics and limits:
+
+- The sender must stay online until the download completes; there is no
+  offline store-and-forward and no resume of interrupted transfers.
+- Transfers on the same holder connection are serialized; concurrent requests
+  receive `409`.
+- A transfer stalls if no chunk arrives within 60 seconds; the download is
+    then aborted. If the receiver cancels, the holder is told to stop via a
+    `cancel` control message.
+- At most 32 pending offers per connection.
 
 ### General Endpoints
 

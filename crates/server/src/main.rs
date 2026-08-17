@@ -7,6 +7,7 @@ use serde::Serialize;
 use tracing_subscriber::EnvFilter;
 
 mod broadcast;
+mod files;
 mod single;
 
 #[cfg(test)]
@@ -78,6 +79,8 @@ async fn main() {
         .push(Router::with_path("single/pub").post(single::publish_message))
         .push(Router::with_path("broad/sub").goal(broadcast::broadcast_subscribe))
         .push(Router::with_path("broad/pub").post(broadcast::broadcast_publish))
+        .push(Router::with_path("files/download/{file_id}").get(files::download))
+        .push(Router::with_path("files/status/{file_id}").get(files::status))
         .push(Router::with_path("connections").goal(connections))
         .push(Router::with_path("health").goal(health))
         .push(Router::with_path("version").goal(version))
