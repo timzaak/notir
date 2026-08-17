@@ -1483,7 +1483,7 @@ dependencies = [
 
 [[package]]
 name = "notir"
-version = "0.1.8"
+version = "0.1.10"
 dependencies = [
  "bytes",
  "clap",
@@ -1502,7 +1502,7 @@ dependencies = [
 
 [[package]]
 name = "notir-cli"
-version = "0.1.8"
+version = "0.1.10"
 dependencies = [
  "anyhow",
  "clap",
